@@ -1,24 +1,25 @@
-# ElixirMake
+# A Make compiler for Mix
 
-**TODO: Add description**
+This project provides a Mix compiler that makes it straight-forward to use makefiles in your Mix projects. The goal is for this compiler to be included as part of Elixir once we get enough feedback and usage.
 
-## Installation
+## Usage
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
+The package can be installed by adding `elixir_make` to your list of dependencies in `mix.exs`:
 
-  1. Add `elixir_make` to your list of dependencies in `mix.exs`:
+```elixir
+def deps do
+  [{:elixir_make, "~> 0.1.0"}]
+end
+```
 
-    ```elixir
-    def deps do
-      [{:elixir_make, "~> 0.0.1"}]
-    end
-    ```
+Still in your `mix.exs` file, you will need to add `:elixir_make` to your list of compilers in `project/0`:
 
-  2. Ensure `elixir_make` is started before your application:
+```elixir
+compilers: [:elixir_make] ++ Mix.compilers,
+```
 
-    ```elixir
-    def application do
-      [applications: [:elixir_make]]
-    end
-    ```
+And that's it. The command above will invoke `make` for Unix, `nmake` for Windows and `gmake` for FreeBSD and OpenBSD. A "Makefile" file is expected at your project root for Unix systems and "Makefile.win" for Windows systems. Run `mix help compile.elixir_make` for more information and options.
 
+## License
+
+Same as Elixir.
