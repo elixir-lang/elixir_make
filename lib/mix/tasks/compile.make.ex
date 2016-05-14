@@ -5,31 +5,65 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   Runs `make` in the current project.
 
   This task runs `make` in the current project; any output coming from `make` is
-  printed in real-time on stdout. `make` will be called without specifying a
-  Makefile, so there has to be a `Makefile` in the current working directory.
+  printed in real-time on stdout.
 
   ## Configuration
 
-    * `:make_executable` - it's a binary. It's the executable to use as the
-      `make` program. By default, it's `"nmake"` on Windows, `"gmake"` on
-      FreeBSD and OpenBSD, and `"make"` on everything else.
+    * `:make_executable` - (binary or `:default`) it's the executable to use as the
+      `make` program. If not provided or if `:default`, it defaults to `"nmake"`
+      on Windows, `"gmake"` on FreeBSD and OpenBSD, and `"make"` on everything
+      else. You can, for example, customize which executable to use on a
+      specific OS and use `:default` for every other OS.
 
-    * `:make_makefile` - it's a binary. It's the Makefile to use. Defaults to
-      `"Makefile"` for Unix systems and `"Makefile.win"` for Windows systems.
+    * `:make_makefile` - (binary or `:default`) it's the Makefile to
+      use. Defaults to `"Makefile"` for Unix systems and `"Makefile.win"` for
+      Windows systems if not provided or if `:default`.
 
-    * `:make_targets` - it's a list of binaries. It's the list of Make targets
-      that should be run. Defaults to `[]`, meaning `make` will run the first
-      target.
+    * `:make_targets` - (list of binaries) it's the list of Make targets that
+      should be run. Defaults to `[]`, meaning `make` will run the first target.
 
-    * `:make_cwd` - it's a binary. It's the directory where `make` will be run,
+    * `:make_cwd` - (binary) it's the directory where `make` will be run,
       relative to the root of the project.
 
-    * `:make_env` - a map of extra environment variables to be passed to `make`.
+    * `:make_env` - (map of binary to binary) it's a map of extra environment
+      variables to be passed to `make`.
 
-    * `:make_error_message` - it's a binary. It's a custom error message that
-      can be used to give instructions as of how to fix the error (e.g., it can
-      be used to suggest installing `gcc` if you're compiling a C dependency).
+    * `:make_error_message` - (binary or `:default`) it's a custom error message
+      that can be used to give instructions as of how to fix the error (e.g., it
+      can be used to suggest installing `gcc` if you're compiling a C
+      dependency).
 
+  """
+
+  @unix_error_msg """
+  Depending on your OS, make sure to follow these instructions:
+
+    * Mac OS X: You need to have gcc and make installed. Try running the
+      commands `gcc --version` and / or `make --version`. If these programs
+      are not installed, you will be prompted to install them.
+
+    * Linux: You need to have gcc and make installed. If you are using
+      Ubuntu or any other Debian-based system, install the packages
+      `build-essential`. Also install `erlang-dev` package if not
+      included in your Erlang/OTP version. If you're on Fedora, run
+      `dnf group install 'Development Tools'`.
+  """
+
+  @windows_error_msg """
+  One option is to install a recent version of Visual Studio (you can download
+  the community edition for free). When you install Visual Studio, make sure
+  you also install the C/C++ tools.
+
+  After installing VS, look in the `Program Files (x86)` folder and search
+  for `Microsoft Visual Studio`. Note down the full path of the folder with
+  the highest version number. Open the `run` command and type in the following
+  command (make sure that the path and version number are correct):
+
+      cmd /K "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
+
+  This should open up a command prompt with the necessary environment variables
+  set, and from which you will be able to run the `mix compile`, `mix deps.compile`,
+  and `mix test` commands.
   """
 
   @spec run(OptionParser.argv) :: :ok | no_return
@@ -41,12 +75,12 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   end
 
   defp build(config) do
-    exec      = Keyword.get(config, :make_executable, executable_for_current_os())
+    exec      = Keyword.get(config, :make_executable, :default) |> os_specific_executable()
     makefile  = Keyword.get(config, :make_makefile, :default)
     targets   = Keyword.get(config, :make_targets, [])
     env       = Keyword.get(config, :make_env, %{})
     cwd       = Keyword.get(config, :make_cwd, ".")
-    error_msg = Keyword.get(config, :make_error_message, nil)
+    error_msg = Keyword.get(config, :make_error_message, :default) |> os_specific_error_msg()
 
     args = args_for_makefile(exec, makefile) ++ targets
 
@@ -67,27 +101,23 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       cd: cwd,
       env: env
     ]
-    {%IO.Stream{}, status} = System.cmd(executable(exec), args, opts)
+    {%IO.Stream{}, status} = System.cmd(find_executable(exec), args, opts)
     status
   end
 
-  defp executable(exec) do
-    System.find_executable(exec) || raise_executable_not_found(exec)
-  end
-
-  defp raise_executable_not_found(exec) do
-    Mix.raise("`#{exec}` not found in the current path")
+  defp find_executable(exec) do
+    System.find_executable(exec) || Mix.raise("`#{exec}` not found in the current path")
   end
 
   defp raise_build_error(exec, exit_status, error_msg) do
-    msg =
-      "Could not compile with `#{exec}` (exit status: #{exit_status})" <>
-      (if error_msg, do: ".\n" <> error_msg, else: "")
-
-    Mix.raise(msg)
+    Mix.raise("Could not compile with `#{exec}` (exit status: #{exit_status}).\n" <> error_msg)
   end
 
-  defp executable_for_current_os() do
+  defp os_specific_executable(exec) when is_binary(exec) do
+    exec
+  end
+
+  defp os_specific_executable(:default) do
     case :os.type() do
       {:win32, _} ->
         "nmake"
@@ -95,6 +125,18 @@ defmodule Mix.Tasks.Compile.ElixirMake do
         "gmake"
       _ ->
         "make"
+    end
+  end
+
+  defp os_specific_error_msg(msg) when is_binary(msg) do
+    msg
+  end
+
+  defp os_specific_error_msg(:default) do
+    case :os.type() do
+      {:unix, _} -> @unix_error_msg
+      {:win32, _} -> @windows_error_msg
+      _ -> ""
     end
   end
 
