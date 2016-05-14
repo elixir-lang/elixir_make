@@ -7,6 +7,7 @@ defmodule ElixirMake.Mixfile do
      elixir: "~> 1.1",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
+     package: package,
      deps: []]
   end
 
@@ -15,5 +16,10 @@ defmodule ElixirMake.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     [applications: []]
+  end
+
+  defp package do
+    %{licenses: ["Apache 2"],
+      links: %{"GitHub" => "https://github.com/elixir-lang/elixir_make"}}
   end
 end
