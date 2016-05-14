@@ -85,6 +85,19 @@ defmodule Mix.Tasks.Compile.MakeTest do
     end
   end
 
+ test "specifying env" do
+    in_fixture fn ->
+      File.write! "Makefile", """
+      all:
+      \t@echo $(HELLO)
+      """
+
+      with_project_config [make_env: %{"HELLO" => "WORLD"}], fn ->
+        assert capture_io(fn -> run([]) end) == "WORLD\n"
+      end
+    end
+  end
+
   test "specifying a makefile" do
     in_fixture fn ->
       File.write "MyMakefile", """

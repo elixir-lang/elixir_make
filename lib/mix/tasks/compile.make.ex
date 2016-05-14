@@ -1,8 +1,6 @@
 defmodule Mix.Tasks.Compile.Make do
   use Mix.Task
 
-  @shortdoc "Runs `make` in the current project"
-
   @moduledoc """
   Runs `make` in the current project.
 
@@ -26,6 +24,8 @@ defmodule Mix.Tasks.Compile.Make do
     * `:make_cwd` - it's a binary. It's the directory where `make` will be run,
       relative to the root of the project.
 
+    * `:make_env` - a map of extra environment variables to be passed to `make`.
+
     * `:make_error_message` - it's a binary. It's a custom error message that
       can be used to give instructions as of how to fix the error (e.g., it can
       be used to suggest installing `gcc` if you're compiling a C dependency).
@@ -44,12 +44,13 @@ defmodule Mix.Tasks.Compile.Make do
     exec      = Keyword.get(config, :make_executable, executable_for_current_os())
     makefile  = Keyword.get(config, :make_makefile, :default)
     targets   = Keyword.get(config, :make_targets, [])
+    env       = Keyword.get(config, :make_env, %{})
     cwd       = Keyword.get(config, :make_cwd, ".")
     error_msg = Keyword.get(config, :make_error_message, nil)
 
     args = args_for_makefile(exec, makefile) ++ targets
 
-    case cmd(exec, args, cwd) do
+    case cmd(exec, args, cwd, env) do
       0 ->
         :ok
       exit_status ->
@@ -59,11 +60,12 @@ defmodule Mix.Tasks.Compile.Make do
 
   # Runs `exec [args]` in `cwd` and prints the stdout and stderr in real time,
   # as soon as `exec` prints them (using `IO.Stream`).
-  defp cmd(exec, args, cwd) do
+  defp cmd(exec, args, cwd, env) do
     opts = [
       into: IO.stream(:stdio, :line),
       stderr_to_stdout: true,
       cd: cwd,
+      env: env
     ]
     {%IO.Stream{}, status} = System.cmd(executable(exec), args, opts)
     status
@@ -87,8 +89,8 @@ defmodule Mix.Tasks.Compile.Make do
 
   defp executable_for_current_os() do
     case :os.type() do
-      {:win32, _}
-        -> "nmake"
+      {:win32, _} ->
+        "nmake"
       {:unix, type} when type in [:freebsd, :openbsd] ->
         "gmake"
       _ ->
