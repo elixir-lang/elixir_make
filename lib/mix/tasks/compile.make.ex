@@ -1,4 +1,4 @@
-defmodule Mix.Tasks.Compile.Make do
+defmodule Mix.Tasks.Compile.ElixirMake do
   use Mix.Task
 
   @moduledoc """

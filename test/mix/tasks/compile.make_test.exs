@@ -1,7 +1,7 @@
-defmodule Mix.Tasks.Compile.MakeTest do
+defmodule Mix.Tasks.Compile.ElixirMakeTest do
   use ExUnit.Case
 
-  import Mix.Tasks.Compile.Make, only: [run: 1]
+  import Mix.Tasks.Compile.ElixirMake, only: [run: 1]
   import ExUnit.CaptureIO
 
   @fixture_project Path.expand("../../fixtures/my_app", __DIR__)
