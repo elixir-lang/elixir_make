@@ -121,6 +121,23 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
     end
   end
 
+  test "specifying targets to run when cleaning" do
+    in_fixture fn ->
+      File.write "Makefile", """
+      all:
+      \t@echo "all"
+      clean:
+      \t@echo "cleaning"
+      """
+
+      with_project_config [make_clean: ["clean"], compilers: [:elixir_make]], fn ->
+        output = capture_io(fn -> Mix.Task.run("clean", []) end)
+        refute output =~ "all\n"
+        assert output =~ "cleaning\n"
+      end
+    end
+  end
+
   defp in_fixture(fun) do
     File.cd!(@fixture_project, fun)
   end
