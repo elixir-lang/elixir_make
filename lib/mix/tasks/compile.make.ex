@@ -22,6 +22,10 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     * `:make_targets` - (list of binaries) it's the list of Make targets that
       should be run. Defaults to `[]`, meaning `make` will run the first target.
 
+    * `:make_clean` - (list of binaries) it's a list of Make targets to be run
+      when `mix clean` is run. It's only run if a non-`nil` value for
+      `:make_clean` is provided. Defaults to `nil`.
+
     * `:make_cwd` - (binary) it's the directory where `make` will be run,
       relative to the root of the project.
 
@@ -73,6 +77,19 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     build(config)
     Mix.Project.build_structure()
     :ok
+  end
+
+  # This is called by Elixir when `mix clean` is run and `:elixir_make` is in
+  # the list of compilers.
+  def clean() do
+    config = Mix.Project.config()
+    {clean_targets, config} = Keyword.pop(config, :make_clean)
+
+    if clean_targets do
+      config
+      |> Keyword.put(:make_targets, clean_targets)
+      |> build()
+    end
   end
 
   defp build(config) do
