@@ -69,8 +69,9 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   @spec run(OptionParser.argv) :: :ok | no_return
   def run(_args) do
     config = Mix.Project.config()
+    Mix.shell.print_app()
     build(config)
-    Mix.Project.build_structure
+    Mix.Project.build_structure()
     :ok
   end
 
