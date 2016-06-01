@@ -80,7 +80,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
       """
 
       with_project_config [make_cwd: "subdir"], fn ->
-        assert capture_io(fn -> run([]) end) == "subdir\n"
+        assert capture_io(fn -> run([]) end) =~ "subdir\n"
       end
     end
   end
@@ -93,7 +93,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
       """
 
       with_project_config [make_env: %{"HELLO" => "WORLD"}], fn ->
-        assert capture_io(fn -> run([]) end) == "WORLD\n"
+        assert capture_io(fn -> run([]) end) =~ "WORLD\n"
       end
     end
   end
@@ -106,7 +106,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
       """
 
       with_project_config [make_makefile: "MyMakefile"], fn ->
-        assert capture_io(fn -> run([]) end) == "my makefile\n"
+        assert capture_io(fn -> run([]) end) =~ "my makefile\n"
       end
     end
   end
