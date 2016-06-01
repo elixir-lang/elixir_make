@@ -138,6 +138,22 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
     end
   end
 
+  test "--verbose" do
+    in_fixture fn ->
+      File.write "MyMakefile", """
+      foo:
+      \t@echo foo
+      bar\\ baz:
+      \t@echo bar baz
+      """
+
+      with_project_config [make_makefile: "MyMakefile", make_targets: ["foo", "bar baz"]], fn ->
+        output = capture_io(fn -> run(["--verbose"]) end)
+        assert output =~ "Make command:"
+      end
+    end
+  end
+
   defp in_fixture(fun) do
     File.cd!(@fixture_project, fun)
   end

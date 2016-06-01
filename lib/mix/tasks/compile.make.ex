@@ -71,10 +71,10 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   """
 
   @spec run(OptionParser.argv) :: :ok | no_return
-  def run(_args) do
+  def run(args) do
     config = Mix.Project.config()
     Mix.shell.print_app()
-    build(config)
+    build(config, args)
     Mix.Project.build_structure()
     :ok
   end
@@ -88,11 +88,11 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     if clean_targets do
       config
       |> Keyword.put(:make_targets, clean_targets)
-      |> build()
+      |> build([])
     end
   end
 
-  defp build(config) do
+  defp build(config, task_args) do
     exec      = Keyword.get(config, :make_executable, :default) |> os_specific_executable()
     makefile  = Keyword.get(config, :make_makefile, :default)
     targets   = Keyword.get(config, :make_targets, [])
@@ -102,7 +102,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
     args = args_for_makefile(exec, makefile) ++ targets
 
-    case cmd(exec, args, cwd, env) do
+    case cmd(exec, args, cwd, env, "--verbose" in task_args) do
       0 ->
         :ok
       exit_status ->
@@ -112,13 +112,18 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
   # Runs `exec [args]` in `cwd` and prints the stdout and stderr in real time,
   # as soon as `exec` prints them (using `IO.Stream`).
-  defp cmd(exec, args, cwd, env) do
+  defp cmd(exec, args, cwd, env, verbose?) do
     opts = [
       into: IO.stream(:stdio, :line),
       stderr_to_stdout: true,
       cd: cwd,
       env: env
     ]
+
+    if verbose? do
+      print_verbose_info(exec, args)
+    end
+
     {%IO.Stream{}, status} = System.cmd(find_executable(exec), args, opts)
     status
   end
@@ -164,4 +169,12 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   defp args_for_makefile("nmake", makefile), do: ["/F", makefile]
   defp args_for_makefile(_, :default), do: []
   defp args_for_makefile(_, makefile), do: ["-f", makefile]
+
+  defp print_verbose_info(exec, args) do
+    args = Enum.map_join(args, " ", fn(arg) ->
+      if String.contains?(arg, " "), do: inspect(arg), else: arg
+    end)
+
+    Mix.shell.info "Compiling with make: #{exec} #{args}"
+  end
 end
