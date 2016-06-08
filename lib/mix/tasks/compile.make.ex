@@ -13,12 +13,11 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   the `project` function in the `mix.exs` file, as in this example:
 
       def project do
-        [
-          app: :myapp,
-          make_executable: "make",
-          make_makefile: "Othermakefile",
-          compilers: [:elixir_make] ++ Mix.compilers,
-        ]
+        [app: :myapp,
+         make_executable: "make",
+         make_makefile: "Othermakefile",
+         compilers: [:elixir_make] ++ Mix.compilers,
+         deps: deps]
       end
 
   ## Options
