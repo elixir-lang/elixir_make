@@ -149,7 +149,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
 
       with_project_config [make_makefile: "MyMakefile", make_targets: ["foo", "bar baz"]], fn ->
         output = capture_io(fn -> run(["--verbose"]) end)
-        assert output =~ "Make command:"
+        assert output =~ "Compiling with make:"
       end
     end
   end
