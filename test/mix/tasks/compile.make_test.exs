@@ -22,7 +22,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
     in_fixture fn ->
       with_project_config [make_executable: "nonexistentmake"], fn ->
         assert_raise Mix.Error, "`nonexistentmake` not found in the current path", fn ->
-          run([])
+          capture_io(fn -> run([]) end)
         end
       end
     end
