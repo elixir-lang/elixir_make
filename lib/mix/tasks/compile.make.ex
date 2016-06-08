@@ -9,8 +9,8 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
   ## Configuration
 
-  The configuration options are listed below. These need to be added to
-  the `project` function in the `mix.exs` file, as in this example:
+  The configuration options need to be added to the `project` function in the
+  `mix.exs` file, as in this example:
 
       def project do
         [app: :myapp,
@@ -20,7 +20,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
          deps: deps]
       end
 
-  ## Options
+  The following options are available:
 
     * `:make_executable` - (binary or `:default`) it's the executable to use as the
       `make` program. If not provided or if `:default`, it defaults to `"nmake"`
