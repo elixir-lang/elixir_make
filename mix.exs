@@ -8,7 +8,7 @@ defmodule ElixirMake.Mixfile do
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      description: "A Make compiler for Mix",
-     package: package,
+     package: package(),
      deps: []]
   end
 
