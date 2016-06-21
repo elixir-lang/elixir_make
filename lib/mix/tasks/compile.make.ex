@@ -111,7 +111,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   end
 
   defp build(config, task_args) do
-    exec      = System.get_env("MAKE") |> sanitize_input() ||
+    exec      = System.get_env("MAKE") ||
     Keyword.get(config, :make_executable, :default) |> os_specific_executable()
     makefile  = Keyword.get(config, :make_makefile, :default)
     targets   = Keyword.get(config, :make_targets, [])
@@ -150,11 +150,6 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   defp find_executable(exec) do
     System.find_executable(exec) || Mix.raise("`#{exec}` " <> @exec_notfound_msg)
   end
-
-  defp sanitize_input(exec) when is_binary(exec) do
-    :binary.split(exec, " ") |> hd()
-  end
-  defp sanitize_input(_), do: nil
 
   defp raise_build_error(exec, exit_status, error_msg) do
     Mix.raise("Could not compile with `#{exec}` (exit status: #{exit_status}).\n" <> error_msg)

@@ -6,11 +6,6 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
 
   @fixture_project Path.expand("../../fixtures/my_app", __DIR__)
 
-  @exec_notfound_msg """
-  `nonexistentmake` not found in the path. If you have set the MAKE environment variable,
-  please make sure it is correct.
-  """
-
   defmodule Sample do
     def project do
       [app: :sample,
@@ -27,7 +22,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
   test "running with a specific executable" do
     in_fixture fn ->
       with_project_config [make_executable: "nonexistentmake"], fn ->
-        assert_raise Mix.Error, @exec_notfound_msg, fn ->
+        assert_raise Mix.Error, ~r/not found in the path/, fn ->
           capture_io(fn -> run([]) end)
         end
       end
@@ -148,7 +143,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
     in_fixture fn ->
       System.put_env("MAKE", "nonexistentmake")
       with_project_config [], fn ->
-        assert_raise Mix.Error, @exec_notfound_msg, fn ->
+        assert_raise Mix.Error, ~r/not found in the path/, fn ->
           capture_io(fn -> run([]) end)
         end
       end
@@ -159,7 +154,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
     in_fixture fn ->
       System.put_env("MAKE", "nonexistentmake -f makefile")
       with_project_config [], fn ->
-        assert_raise Mix.Error, @exec_notfound_msg, fn ->
+        assert_raise Mix.Error, ~r/not found in the path/, fn ->
           capture_io(fn -> run([]) end)
         end
       end
