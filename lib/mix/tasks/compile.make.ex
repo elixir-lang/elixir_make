@@ -83,6 +83,11 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   and `mix test` commands.
   """
 
+  @exec_notfound_msg """
+  not found in the path. If you have set the MAKE environment variable,
+  please make sure it is correct.
+  """
+
   @spec run(OptionParser.argv) :: :ok | no_return
   def run(args) do
     config = Mix.Project.config()
@@ -106,7 +111,8 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   end
 
   defp build(config, task_args) do
-    exec      = Keyword.get(config, :make_executable, :default) |> os_specific_executable()
+    exec      = System.get_env("MAKE") |> sanitize_input() ||
+    Keyword.get(config, :make_executable, :default) |> os_specific_executable()
     makefile  = Keyword.get(config, :make_makefile, :default)
     targets   = Keyword.get(config, :make_targets, [])
     env       = Keyword.get(config, :make_env, %{})
@@ -142,8 +148,13 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   end
 
   defp find_executable(exec) do
-    System.find_executable(exec) || Mix.raise("`#{exec}` not found in the current path")
+    System.find_executable(exec) || Mix.raise("`#{exec}` " <> @exec_notfound_msg)
   end
+
+  defp sanitize_input(exec) when is_binary(exec) do
+    :binary.split(exec, " ") |> hd()
+  end
+  defp sanitize_input(_), do: nil
 
   defp raise_build_error(exec, exit_status, error_msg) do
     Mix.raise("Could not compile with `#{exec}` (exit status: #{exit_status}).\n" <> error_msg)

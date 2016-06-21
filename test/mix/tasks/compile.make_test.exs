@@ -6,6 +6,11 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
 
   @fixture_project Path.expand("../../fixtures/my_app", __DIR__)
 
+  @exec_notfound_msg """
+  `nonexistentmake` not found in the path. If you have set the MAKE environment variable,
+  please make sure it is correct.
+  """
+
   defmodule Sample do
     def project do
       [app: :sample,
@@ -14,6 +19,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
   end
 
   setup do
+    System.delete_env("MAKE")
     in_fixture(fn -> File.rm_rf!("Makefile") end)
     :ok
   end
@@ -21,7 +27,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
   test "running with a specific executable" do
     in_fixture fn ->
       with_project_config [make_executable: "nonexistentmake"], fn ->
-        assert_raise Mix.Error, "`nonexistentmake` not found in the current path", fn ->
+        assert_raise Mix.Error, @exec_notfound_msg, fn ->
           capture_io(fn -> run([]) end)
         end
       end
@@ -134,6 +140,28 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
         output = capture_io(fn -> Mix.Task.run("clean", []) end)
         refute output =~ "all\n"
         assert output =~ "cleaning\n"
+      end
+    end
+  end
+
+  test "user-defined executable through environment variable" do
+    in_fixture fn ->
+      System.put_env("MAKE", "nonexistentmake")
+      with_project_config [], fn ->
+        assert_raise Mix.Error, @exec_notfound_msg, fn ->
+          capture_io(fn -> run([]) end)
+        end
+      end
+    end
+  end
+
+  test "user-defined executable with sanitized input" do
+    in_fixture fn ->
+      System.put_env("MAKE", "nonexistentmake -f makefile")
+      with_project_config [], fn ->
+        assert_raise Mix.Error, @exec_notfound_msg, fn ->
+          capture_io(fn -> run([]) end)
+        end
       end
     end
   end
