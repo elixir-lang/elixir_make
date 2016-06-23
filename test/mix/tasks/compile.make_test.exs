@@ -143,18 +143,18 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
     in_fixture fn ->
       System.put_env("MAKE", "nonexistentmake")
       with_project_config [], fn ->
-        assert_raise Mix.Error, ~r/not found in the path/, fn ->
+        assert_raise Mix.Error, ~r/`nonexistentmake` not found in the path/, fn ->
           capture_io(fn -> run([]) end)
         end
       end
     end
   end
 
-  test "user-defined executable with sanitized input" do
+  test "user-defined executable with no arguments allowed" do
     in_fixture fn ->
-      System.put_env("MAKE", "nonexistentmake -f makefile")
+      System.put_env("MAKE", "make -f makefile")
       with_project_config [], fn ->
-        assert_raise Mix.Error, ~r/not found in the path/, fn ->
+        assert_raise Mix.Error, ~r/`make -f makefile` not found in the path/, fn ->
           capture_io(fn -> run([]) end)
         end
       end

@@ -111,8 +111,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   end
 
   defp build(config, task_args) do
-    exec      = System.get_env("MAKE") ||
-    Keyword.get(config, :make_executable, :default) |> os_specific_executable()
+    exec      = System.get_env("MAKE") || os_specific_executable(Keyword.get(config, :make_executable, :default))
     makefile  = Keyword.get(config, :make_makefile, :default)
     targets   = Keyword.get(config, :make_targets, [])
     env       = Keyword.get(config, :make_env, %{})
