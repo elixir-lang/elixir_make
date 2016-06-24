@@ -14,6 +14,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
   end
 
   setup do
+    System.delete_env("MAKE")
     in_fixture(fn -> File.rm_rf!("Makefile") end)
     :ok
   end
@@ -21,7 +22,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
   test "running with a specific executable" do
     in_fixture fn ->
       with_project_config [make_executable: "nonexistentmake"], fn ->
-        assert_raise Mix.Error, "`nonexistentmake` not found in the current path", fn ->
+        assert_raise Mix.Error, ~r/not found in the path/, fn ->
           capture_io(fn -> run([]) end)
         end
       end
@@ -134,6 +135,28 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
         output = capture_io(fn -> Mix.Task.run("clean", []) end)
         refute output =~ "all\n"
         assert output =~ "cleaning\n"
+      end
+    end
+  end
+
+  test "user-defined executable through environment variable" do
+    in_fixture fn ->
+      System.put_env("MAKE", "nonexistentmake")
+      with_project_config [], fn ->
+        assert_raise Mix.Error, ~r/`nonexistentmake` not found in the path/, fn ->
+          capture_io(fn -> run([]) end)
+        end
+      end
+    end
+  end
+
+  test "user-defined executable with no arguments allowed" do
+    in_fixture fn ->
+      System.put_env("MAKE", "make -f makefile")
+      with_project_config [], fn ->
+        assert_raise Mix.Error, ~r/`make -f makefile` not found in the path/, fn ->
+          capture_io(fn -> run([]) end)
+        end
       end
     end
   end
