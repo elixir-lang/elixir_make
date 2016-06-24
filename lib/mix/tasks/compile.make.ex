@@ -9,15 +9,15 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
   ## Configuration
 
-  The configuration options need to be added to the `project` function in the
-  `mix.exs` file, as in this example:
+  This compiler can be configured through the return value of the `project/0`
+  function in `mix.exs`; for example:
 
-      def project do
+      def project() do
         [app: :myapp,
          make_executable: "make",
          make_makefile: "Othermakefile",
          compilers: [:elixir_make] ++ Mix.compilers,
-         deps: deps]
+         deps: deps()]
       end
 
   The following options are available:
@@ -26,7 +26,8 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       `make` program. If not provided or if `:default`, it defaults to `"nmake"`
       on Windows, `"gmake"` on FreeBSD and OpenBSD, and `"make"` on everything
       else. You can, for example, customize which executable to use on a
-      specific OS and use `:default` for every other OS.
+      specific OS and use `:default` for every other OS. If the `MAKE`
+      environment variable is present, that is used as the value of this option.
 
     * `:make_makefile` - (binary or `:default`) it's the Makefile to
       use. Defaults to `"Makefile"` for Unix systems and `"Makefile.win"` for
@@ -56,14 +57,14 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   Depending on your OS, make sure to follow these instructions:
 
     * Mac OS X: You need to have gcc and make installed. Try running the
-      commands `gcc --version` and / or `make --version`. If these programs
+      commands "gcc --version" and / or "make --version". If these programs
       are not installed, you will be prompted to install them.
 
     * Linux: You need to have gcc and make installed. If you are using
       Ubuntu or any other Debian-based system, install the packages
-      `build-essential`. Also install `erlang-dev` package if not
+      "build-essential". Also install "erlang-dev" package if not
       included in your Erlang/OTP version. If you're on Fedora, run
-      `dnf group install 'Development Tools'`.
+      "dnf group install 'Development Tools'".
   """
 
   @windows_error_msg """
@@ -71,21 +72,16 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   the community edition for free). When you install Visual Studio, make sure
   you also install the C/C++ tools.
 
-  After installing VS, look in the `Program Files (x86)` folder and search
-  for `Microsoft Visual Studio`. Note down the full path of the folder with
-  the highest version number. Open the `run` command and type in the following
+  After installing VS, look in the "Program Files (x86)" directory and search
+  for "Microsoft Visual Studio". Note down the full path of the folder with
+  the highest version number. Open the "run" command and type in the following
   command (make sure that the path and version number are correct):
 
       cmd /K "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 
   This should open up a command prompt with the necessary environment variables
-  set, and from which you will be able to run the `mix compile`, `mix deps.compile`,
-  and `mix test` commands.
-  """
-
-  @exec_notfound_msg """
-  not found in the path. If you have set the MAKE environment variable,
-  please make sure it is correct.
+  set, and from which you will be able to run the "mix compile", "mix deps.compile",
+  and "mix test" commands.
   """
 
   @spec run(OptionParser.argv) :: :ok | no_return
@@ -147,11 +143,14 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   end
 
   defp find_executable(exec) do
-    System.find_executable(exec) || Mix.raise("`#{exec}` " <> @exec_notfound_msg)
+    System.find_executable(exec) || Mix.raise("""
+    "#{exec}" not found in the path. If you have set the MAKE environment variable,
+    please make sure it is correct.
+    """)
   end
 
   defp raise_build_error(exec, exit_status, error_msg) do
-    Mix.raise("Could not compile with `#{exec}` (exit status: #{exit_status}).\n" <> error_msg)
+    Mix.raise(~s{Could not compile with "#{exec}" (exit status: #{exit_status}).\n} <> error_msg)
   end
 
   defp os_specific_executable(exec) when is_binary(exec) do
