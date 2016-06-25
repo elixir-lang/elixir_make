@@ -116,7 +116,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     # must be an absolute path. This is a different behaviour from earlier
     # OTP versions and appears to be a bug. It is being tracked at
     # http://bugs.erlang.org/browse/ERL-175.
-    cwd       = Keyword.get(config, :make_cwd, File.cwd!())
+    cwd       = Keyword.get(config, :make_cwd, ".") |> Path.expand(File.cwd!())
     error_msg = Keyword.get(config, :make_error_message, :default) |> os_specific_error_msg()
 
     args = args_for_makefile(exec, makefile) ++ targets
