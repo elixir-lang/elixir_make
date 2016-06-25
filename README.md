@@ -1,5 +1,7 @@
 # A Make compiler for Mix
 
+[![Build Status](https://travis-ci.org/elixir-lang/elixir_make.svg?branch=master)](https://travis-ci.org/elixir-lang/elixir_make)
+
 This project provides a Mix compiler that makes it straight-forward to use makefiles in your Mix projects. The goal is for this compiler to be included as part of Elixir once we get enough feedback and usage.
 
 ## Usage
