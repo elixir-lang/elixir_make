@@ -1,6 +1,8 @@
 defmodule Mix.Tasks.Compile.ElixirMake do
   use Mix.Task
 
+  @recursive true
+
   @moduledoc """
   Runs `make` in the current project.
 
