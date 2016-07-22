@@ -69,15 +69,17 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       "dnf group install 'Development Tools'".
   """
 
-  @windows_error_msg """
-  One option is to install a recent version of Visual Studio (you can download
-  the community edition for free). When you install Visual Studio, make sure
-  you also install the C/C++ tools.
+  @windows_error_msg ~S"""
+  One option is to install a recent version of
+  [Visual C++ Build Tools](http://landinghub.visualstudio.com/visual-cpp-build-tools)
+  either manually or using [Chocolatey](https://chocolatey.org/) -
+  `choco install VisualCppBuildTools`.
 
-  After installing VS, look in the "Program Files (x86)" directory and search
-  for "Microsoft Visual Studio". Note down the full path of the folder with
-  the highest version number. Open the "run" command and type in the following
-  command (make sure that the path and version number are correct):
+  After installing Visual C++ Build Tools, look in the "Program Files (x86)"
+  directory and search for "Microsoft Visual Studio". Note down the full path
+  of the folder with the highest version number. Open the "run" command and
+  type in the following command (make sure that the path and version number
+  are correct):
 
       cmd /K "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 
