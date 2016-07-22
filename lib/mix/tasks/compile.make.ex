@@ -69,7 +69,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       "dnf group install 'Development Tools'".
   """
 
-  @windows_error_msg """
+  @windows_error_msg ~S"""
   One option is to install a recent version of
   [Visual C++ Build Tools](http://landinghub.visualstudio.com/visual-cpp-build-tools)
   either manually or using [Chocolatey](https://chocolatey.org/) -
