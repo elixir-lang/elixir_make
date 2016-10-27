@@ -21,6 +21,7 @@ defmodule ElixirMake.Mixfile do
 
   defp package do
     %{licenses: ["Apache 2"],
-      links: %{"GitHub" => "https://github.com/elixir-lang/elixir_make"}}
+      links: %{"GitHub" => "https://github.com/elixir-lang/elixir_make"},
+      maintainers: ["Andrea Leopardi", "José Valim"]}
   end
 end
