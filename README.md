@@ -10,7 +10,7 @@ The package can be installed by adding `elixir_make` to your list of dependencie
 
 ```elixir
 def deps do
-  [{:elixir_make, "~> 0.4"}]
+  [{:elixir_make, "~> 0.4", runtime: false}]
 end
 ```
 
