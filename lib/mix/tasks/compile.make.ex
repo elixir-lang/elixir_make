@@ -88,10 +88,10 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   and "mix test" commands.
   """
 
-  @spec run(OptionParser.argv) :: :ok | no_return
+  @spec run(OptionParser.argv()) :: :ok | no_return
   def run(args) do
     config = Mix.Project.config()
-    Mix.shell.print_app()
+    Mix.shell().print_app()
     build(config, args)
     Mix.Project.build_structure()
     :ok
@@ -111,16 +111,19 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   end
 
   defp build(config, task_args) do
-    exec      = System.get_env("MAKE") || os_specific_executable(Keyword.get(config, :make_executable, :default))
-    makefile  = Keyword.get(config, :make_makefile, :default)
-    targets   = Keyword.get(config, :make_targets, [])
-    env       = Keyword.get(config, :make_env, %{})
+    exec =
+      System.get_env("MAKE") ||
+        os_specific_executable(Keyword.get(config, :make_executable, :default))
+
+    makefile = Keyword.get(config, :make_makefile, :default)
+    targets = Keyword.get(config, :make_targets, [])
+    env = Keyword.get(config, :make_env, %{})
     # In OTP 19, Erlang's `open_port/2` ignores the current working
     # directory when expanding relative paths. This means that `:make_cwd`
     # must be an absolute path. This is a different behaviour from earlier
     # OTP versions and appears to be a bug. It is being tracked at
     # http://bugs.erlang.org/browse/ERL-175.
-    cwd       = Keyword.get(config, :make_cwd, ".") |> Path.expand(File.cwd!())
+    cwd = Keyword.get(config, :make_cwd, ".") |> Path.expand(File.cwd!())
     error_msg = Keyword.get(config, :make_error_message, :default) |> os_specific_error_msg()
 
     args = args_for_makefile(exec, makefile) ++ targets
@@ -128,6 +131,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     case cmd(exec, args, cwd, env, "--verbose" in task_args) do
       0 ->
         :ok
+
       exit_status ->
         raise_build_error(exec, exit_status, error_msg)
     end
@@ -152,10 +156,11 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   end
 
   defp find_executable(exec) do
-    System.find_executable(exec) || Mix.raise("""
-    "#{exec}" not found in the path. If you have set the MAKE environment variable,
-    please make sure it is correct.
-    """)
+    System.find_executable(exec) ||
+      Mix.raise("""
+      "#{exec}" not found in the path. If you have set the MAKE environment variable,
+      please make sure it is correct.
+      """)
   end
 
   defp raise_build_error(exec, exit_status, error_msg) do
@@ -170,8 +175,10 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     case :os.type() do
       {:win32, _} ->
         "nmake"
+
       {:unix, type} when type in [:freebsd, :openbsd] ->
         "gmake"
+
       _ ->
         "make"
     end
@@ -197,10 +204,11 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   defp args_for_makefile(_, makefile), do: ["-f", makefile]
 
   defp print_verbose_info(exec, args) do
-    args = Enum.map_join(args, " ", fn(arg) ->
-      if String.contains?(arg, " "), do: inspect(arg), else: arg
-    end)
+    args =
+      Enum.map_join(args, " ", fn arg ->
+        if String.contains?(arg, " "), do: inspect(arg), else: arg
+      end)
 
-    Mix.shell.info "Compiling with make: #{exec} #{args}"
+    Mix.shell().info("Compiling with make: #{exec} #{args}")
   end
 end
