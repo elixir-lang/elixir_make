@@ -2,15 +2,12 @@ language: elixir
 
 sudo: false
 
-otp_release:
-  - 17.5
-  - 18.3
-
-elixir:
-  - 1.1.1
-  - 1.2.5
-
 matrix:
-  exclude:
+  include:
     - otp_release: 17.5
-      elixir: 1.2.5
+      elixir: 1.1.1
+    - otp_release: 20.1
+      elixir: 1.6.1
+
+script:
+  - mix test
