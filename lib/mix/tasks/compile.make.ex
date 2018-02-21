@@ -55,18 +55,18 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
   """
 
+  @mac_error_msg """
+  You need to have gcc and make installed. Try running the
+  commands "gcc --version" and / or "make --version". If these programs
+  are not installed, you will be prompted to install them.
+  """
+
   @unix_error_msg """
-  Depending on your OS, make sure to follow these instructions:
-
-    * Mac OS X: You need to have gcc and make installed. Try running the
-      commands "gcc --version" and / or "make --version". If these programs
-      are not installed, you will be prompted to install them.
-
-    * Linux: You need to have gcc and make installed. If you are using
-      Ubuntu or any other Debian-based system, install the packages
-      "build-essential". Also install "erlang-dev" package if not
-      included in your Erlang/OTP version. If you're on Fedora, run
-      "dnf group install 'Development Tools'".
+  You need to have gcc and make installed. If you are using
+  Ubuntu or any other Debian-based system, install the packages
+  "build-essential". Also install "erlang-dev" package if not
+  included in your Erlang/OTP version. If you're on Fedora, run
+  "dnf group install 'Development Tools'".
   """
 
   @windows_error_msg ~S"""
@@ -190,6 +190,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
   defp os_specific_error_msg(:default) do
     case :os.type() do
+      {:unix, :darwin} -> @mac_error_msg
       {:unix, _} -> @unix_error_msg
       {:win32, _} -> @windows_error_msg
       _ -> ""
