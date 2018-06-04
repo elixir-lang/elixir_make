@@ -46,7 +46,9 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       relative to the root of the project.
 
     * `:make_env` - (map of binary to binary) it's a map of extra environment
-      variables to be passed to `make`.
+      variables to be passed to `make`. You can also pass a function in here in 
+      case `make_env` needs access to things that are not available during project
+      setup; the function should return a map of binary to binary.
 
     * `:make_error_message` - (binary or `:default`) it's a custom error message
       that can be used to give instructions as of how to fix the error (e.g., it
@@ -118,6 +120,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     makefile = Keyword.get(config, :make_makefile, :default)
     targets = Keyword.get(config, :make_targets, [])
     env = Keyword.get(config, :make_env, %{})
+    env = if is_function(env), do: env.(), else: env
     # In OTP 19, Erlang's `open_port/2` ignores the current working
     # directory when expanding relative paths. This means that `:make_cwd`
     # must be an absolute path. This is a different behaviour from earlier
