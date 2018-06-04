@@ -46,7 +46,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       relative to the root of the project.
 
     * `:make_env` - (map of binary to binary) it's a map of extra environment
-      variables to be passed to `make`. You can also pass a function in here in 
+      variables to be passed to `make`. You can also pass a function in here in
       case `make_env` needs access to things that are not available during project
       setup; the function should return a map of binary to binary.
 
@@ -54,6 +54,9 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       that can be used to give instructions as of how to fix the error (e.g., it
       can be used to suggest installing `gcc` if you're compiling a C
       dependency).
+
+    * `:make_args` - (list of binaries) it's a list of extra arguments to be
+      passed.
 
   """
 
@@ -128,8 +131,8 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     # http://bugs.erlang.org/browse/ERL-175.
     cwd = Keyword.get(config, :make_cwd, ".") |> Path.expand(File.cwd!())
     error_msg = Keyword.get(config, :make_error_message, :default) |> os_specific_error_msg()
-
-    args = args_for_makefile(exec, makefile) ++ targets
+    custom_args = Keyword.get(config, :make_args, [])
+    args = args_for_makefile(exec, makefile) ++ targets ++ custom_args
 
     case cmd(exec, args, cwd, env, "--verbose" in task_args) do
       0 ->

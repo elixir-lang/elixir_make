@@ -179,6 +179,20 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
     end)
   end
 
+  test "additional args to make" do
+    in_fixture(fn ->
+      File.write("Makefile", """
+      all:
+      \t@echo "all"
+      """)
+
+      with_project_config([make_args: ["--print-directory"]], fn ->
+        output = capture_io(fn -> run([]) end)
+        assert output =~ "make: Entering directory"
+      end)
+    end)
+  end
+
   defp in_fixture(fun) do
     File.cd!(@fixture_project, fun)
   end
