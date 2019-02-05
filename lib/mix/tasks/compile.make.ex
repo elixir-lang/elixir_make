@@ -223,6 +223,10 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   # Returns a map of default environment variables
   # Defauts may be overwritten.
   defp default_env(config, env) do
+    root_dir = :code.root_dir()
+    erl_interface_dir = Path.join(root_dir, "usr")
+    [erts_dir] = Path.wildcard(Path.join(root_dir, "erts*"))
+
     Map.merge(
       %{
         "MIX_TARGET" => to_string(Mix.target()),
@@ -231,7 +235,16 @@ defmodule Mix.Tasks.Compile.ElixirMake do
         "MIX_COMPILE_PATH" => Mix.Project.compile_path(config),
         "MIX_CONSOLIDATION_PATH" => Mix.Project.consolidation_path(config),
         "MIX_DEPS_PATH" => Mix.Project.deps_path(config),
-        "MIX_MANIFEST_PATH" => Mix.Project.manifest_path(config)
+        "MIX_MANIFEST_PATH" => Mix.Project.manifest_path(config),
+
+        # Rebar naming
+        "ERL_EI_LIBDIR" => Path.join(erl_interface_dir, "lib"),
+        "ERL_EI_INCLUDE_DIR" => Path.join(erl_interface_dir, "include"),
+
+        # erlang.mk naming
+        "ERTS_INCLUDE_DIR" => Path.join(erts_dir, "include"),
+        "ERL_INTERFACE_LIB_DIR" => Path.join(erl_interface_dir, "lib"),
+        "ERL_INTERFACE_INCLUDE_DIR" => Path.join(erl_interface_dir, "include")
       },
       env
     )
