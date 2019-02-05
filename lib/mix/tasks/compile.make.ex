@@ -124,6 +124,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     targets = Keyword.get(config, :make_targets, [])
     env = Keyword.get(config, :make_env, %{})
     env = if is_function(env), do: env.(), else: env
+    env = default_env(config, env)
     # In OTP 19, Erlang's `open_port/2` ignores the current working
     # directory when expanding relative paths. This means that `:make_cwd`
     # must be an absolute path. This is a different behaviour from earlier
@@ -217,5 +218,22 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       end)
 
     Mix.shell().info("Compiling with make: #{exec} #{args}")
+  end
+
+  # Returns a map of default environment variables
+  # Defauts may be overwritten.
+  defp default_env(config, env) do
+    Map.merge(
+      %{
+        "MIX_TARGET" => to_string(Mix.target()),
+        "MIX_ENV" => to_string(Mix.env()),
+        "MIX_BUILD_PATH" => Mix.Project.build_path(config),
+        "MIX_COMPILE_PATH" => Mix.Project.compile_path(config),
+        "MIX_CONSOLIDATION_PATH" => Mix.Project.consolidation_path(config),
+        "MIX_DEPS_PATH" => Mix.Project.deps_path(config),
+        "MIX_MANIFEST_PATH" => Mix.Project.manifest_path(config)
+      },
+      env
+    )
   end
 end
