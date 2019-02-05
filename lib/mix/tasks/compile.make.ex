@@ -229,7 +229,8 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
     Map.merge(
       %{
-        "MIX_TARGET" => to_string(Mix.target()),
+        # Don't use Mix.target/0 here for backwards compatability. 
+        "MIX_TARGET" => System.get_env("MIX_TARGET") || "host",
         "MIX_ENV" => to_string(Mix.env()),
         "MIX_BUILD_PATH" => Mix.Project.build_path(config),
         "MIX_COMPILE_PATH" => Mix.Project.compile_path(config),
