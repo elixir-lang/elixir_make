@@ -234,7 +234,6 @@ defmodule Mix.Tasks.Compile.ElixirMake do
         "MIX_ENV" => to_string(Mix.env()),
         "MIX_BUILD_PATH" => Mix.Project.build_path(config),
         "MIX_COMPILE_PATH" => Mix.Project.compile_path(config),
-        "MIX_CONSOLIDATION_PATH" => Mix.Project.consolidation_path(config),
         "MIX_DEPS_PATH" => Mix.Project.deps_path(config),
         "MIX_MANIFEST_PATH" => Mix.Project.manifest_path(config),
 

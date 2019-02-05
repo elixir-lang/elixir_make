@@ -107,7 +107,6 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
       \t@echo $(MIX_ENV)
       \t@echo $(MIX_BUILD_PATH)
       \t@echo $(MIX_COMPILE_PATH)
-      \t@echo $(MIX_CONSOLIDATION_PATH)
       \t@echo $(MIX_DEPS_PATH)
       \t@echo $(MIX_MANIFEST_PATH)
       """)
@@ -119,7 +118,6 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
                test
                #{@fixture_project}/_build/test
                #{@fixture_project}/_build/test/lib/my_app/ebin
-               #{@fixture_project}/_build/test/lib/my_app/consolidated
                #{@fixture_project}/deps
                #{@fixture_project}/_build/test/lib/my_app/.mix
                """
