@@ -99,6 +99,43 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
     end)
   end
 
+  test "default env" do
+    in_fixture(fn ->
+      File.write!("Makefile", """
+      all:
+      \t@echo $(MIX_TARGET)
+      \t@echo $(MIX_ENV)
+      \t@echo $(MIX_BUILD_PATH)
+      \t@echo $(MIX_COMPILE_PATH)
+      \t@echo $(MIX_DEPS_PATH)
+      """)
+
+      with_project_config([], fn ->
+        assert capture_io(fn -> run([]) end) =~ """
+               my_app
+               host
+               test
+               #{@fixture_project}/_build/test
+               #{@fixture_project}/_build/test/lib/my_app/ebin
+               #{@fixture_project}/deps
+               """
+      end)
+    end)
+  end
+
+  test "overwrite default env" do
+    in_fixture(fn ->
+      File.write!("Makefile", """
+      all:
+      \t@echo $(MIX_ENV)
+      """)
+
+      with_project_config([make_env: %{"MIX_ENV" => "SUPER_CUSTOM"}], fn ->
+        assert capture_io(fn -> run([]) end) =~ "SUPER_CUSTOM\n"
+      end)
+    end)
+  end
+
   test "specifying a makefile" do
     in_fixture(fn ->
       File.write("MyMakefile", """

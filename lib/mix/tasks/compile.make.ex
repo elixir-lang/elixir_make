@@ -124,6 +124,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     targets = Keyword.get(config, :make_targets, [])
     env = Keyword.get(config, :make_env, %{})
     env = if is_function(env), do: env.(), else: env
+    env = default_env(config, env)
     # In OTP 19, Erlang's `open_port/2` ignores the current working
     # directory when expanding relative paths. This means that `:make_cwd`
     # must be an absolute path. This is a different behaviour from earlier
@@ -217,5 +218,34 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       end)
 
     Mix.shell().info("Compiling with make: #{exec} #{args}")
+  end
+
+  # Returns a map of default environment variables
+  # Defauts may be overwritten.
+  defp default_env(config, env) do
+    root_dir = :code.root_dir()
+    erl_interface_dir = Path.join(root_dir, "usr")
+    [erts_dir] = Path.wildcard(Path.join(root_dir, "erts*"))
+
+    Map.merge(
+      %{
+        # Don't use Mix.target/0 here for backwards compatability. 
+        "MIX_TARGET" => System.get_env("MIX_TARGET") || "host",
+        "MIX_ENV" => to_string(Mix.env()),
+        "MIX_BUILD_PATH" => Mix.Project.build_path(config),
+        "MIX_COMPILE_PATH" => Mix.Project.compile_path(config),
+        "MIX_DEPS_PATH" => Mix.Project.deps_path(config),
+
+        # Rebar naming
+        "ERL_EI_LIBDIR" => Path.join(erl_interface_dir, "lib"),
+        "ERL_EI_INCLUDE_DIR" => Path.join(erl_interface_dir, "include"),
+
+        # erlang.mk naming
+        "ERTS_INCLUDE_DIR" => Path.join(erts_dir, "include"),
+        "ERL_INTERFACE_LIB_DIR" => Path.join(erl_interface_dir, "lib"),
+        "ERL_INTERFACE_INCLUDE_DIR" => Path.join(erl_interface_dir, "include")
+      },
+      env
+    )
   end
 end
