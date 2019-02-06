@@ -48,7 +48,8 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     * `:make_env` - (map of binary to binary) it's a map of extra environment
       variables to be passed to `make`. You can also pass a function in here in
       case `make_env` needs access to things that are not available during project
-      setup; the function should return a map of binary to binary.
+      setup; the function should return a map of binary to binary. Many default
+      environment variables are set, see section below
 
     * `:make_error_message` - (binary or `:default`) it's a custom error message
       that can be used to give instructions as of how to fix the error (e.g., it
@@ -58,6 +59,24 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     * `:make_args` - (list of binaries) it's a list of extra arguments to be
       passed.
 
+  ## Default environment variables
+
+  There are also several default environment variables set:
+
+    * `MIX_TARGET`
+    * `MIX_ENV`
+    * `MIX_BUILD_PATH`
+    * `MIX_COMPILE_PATH`
+    * `MIX_CONSOLIDATION_PATH`
+    * `MIX_DEPS_PATH`
+    * `MIX_MANIFEST_PATH`
+    * `ERL_EI_LIBDIR`
+    * `ERL_EI_INCLUDE_DIR`
+    * `ERTS_INCLUDE_DIR`
+    * `ERL_INTERFACE_LIB_DIR`
+    * `ERL_INTERFACE_INCLUDE_DIR`
+
+  These may also be overwritten with the `make_env` option.
   """
 
   @mac_error_msg """
