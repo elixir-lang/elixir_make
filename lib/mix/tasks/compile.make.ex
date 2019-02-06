@@ -235,7 +235,6 @@ defmodule Mix.Tasks.Compile.ElixirMake do
         "MIX_BUILD_PATH" => Mix.Project.build_path(config),
         "MIX_COMPILE_PATH" => Mix.Project.compile_path(config),
         "MIX_DEPS_PATH" => Mix.Project.deps_path(config),
-        "MIX_MANIFEST_PATH" => Mix.Project.manifest_path(config),
 
         # Rebar naming
         "ERL_EI_LIBDIR" => Path.join(erl_interface_dir, "lib"),
