@@ -14,6 +14,11 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
 
   setup do
     System.delete_env("MAKE")
+    System.delete_env("ERL_EI_LIBDIR")
+    System.delete_env("ERL_EI_INCLUDE_DIR")
+    System.delete_env("ERTS_INCLUDE_DIR")
+    System.delete_env("ERL_INTERFACE_LIB_DIR")
+    System.delete_env("ERL_INTERFACE_INCLUDE_DIR")
     in_fixture(fn -> File.rm_rf!("Makefile") end)
     :ok
   end
@@ -118,6 +123,36 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
                #{@fixture_project}/_build/test
                #{@fixture_project}/_build/test/lib/my_app/ebin
                #{@fixture_project}/deps
+               """
+      end)
+    end)
+  end
+
+  test "erts env vars don't clobber existing vars" do
+    in_fixture(fn ->
+      fake_dir = "/tmp/erts/"
+      System.put_env("ERL_EI_LIBDIR", fake_dir)
+      System.put_env("ERL_EI_INCLUDE_DIR", fake_dir)
+      System.put_env("ERTS_INCLUDE_DIR", fake_dir)
+      System.put_env("ERL_INTERFACE_LIB_DIR", fake_dir)
+      System.put_env("ERL_INTERFACE_INCLUDE_DIR", fake_dir)
+
+      File.write!("Makefile", """
+      all:
+      \t@echo $(ERL_EI_LIBDIR)
+      \t@echo $(ERL_EI_INCLUDE_DIR)
+      \t@echo $(ERTS_INCLUDE_DIR)
+      \t@echo $(ERL_INTERFACE_LIB_DIR)
+      \t@echo $(ERL_INTERFACE_INCLUDE_DIR)
+      """)
+
+      with_project_config([], fn ->
+        assert capture_io(fn -> run([]) end) =~ """
+               #{fake_dir}
+               #{fake_dir}
+               #{fake_dir}
+               #{fake_dir}
+               #{fake_dir}
                """
       end)
     end)

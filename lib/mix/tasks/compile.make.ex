@@ -241,30 +241,37 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
   # Returns a map of default environment variables
   # Defauts may be overwritten.
-  defp default_env(config, env) do
+  defp default_env(config, default_env) do
     root_dir = :code.root_dir()
     erl_interface_dir = Path.join(root_dir, "usr")
     [erts_dir] = Path.wildcard(Path.join(root_dir, "erts*"))
+    erts_include_dir = Path.join(erts_dir, "include")
+    erl_ei_lib_dir = Path.join(erl_interface_dir, "lib")
+    erl_ei_include_dir = Path.join(erl_interface_dir, "include")
 
     Map.merge(
       %{
         # Don't use Mix.target/0 here for backwards compatability. 
-        "MIX_TARGET" => System.get_env("MIX_TARGET") || "host",
+        "MIX_TARGET" => env("MIX_TARGET", "host"),
         "MIX_ENV" => to_string(Mix.env()),
         "MIX_BUILD_PATH" => Mix.Project.build_path(config),
         "MIX_COMPILE_PATH" => Mix.Project.compile_path(config),
         "MIX_DEPS_PATH" => Mix.Project.deps_path(config),
 
         # Rebar naming
-        "ERL_EI_LIBDIR" => Path.join(erl_interface_dir, "lib"),
-        "ERL_EI_INCLUDE_DIR" => Path.join(erl_interface_dir, "include"),
+        "ERL_EI_LIBDIR" => env("ERL_EI_LIBDIR", erl_ei_lib_dir),
+        "ERL_EI_INCLUDE_DIR" => env("ERL_EI_INCLUDE_DIR", erl_ei_include_dir),
 
         # erlang.mk naming
-        "ERTS_INCLUDE_DIR" => Path.join(erts_dir, "include"),
-        "ERL_INTERFACE_LIB_DIR" => Path.join(erl_interface_dir, "lib"),
-        "ERL_INTERFACE_INCLUDE_DIR" => Path.join(erl_interface_dir, "include")
+        "ERTS_INCLUDE_DIR" => env("ERTS_INCLUDE_DIR", erts_include_dir),
+        "ERL_INTERFACE_LIB_DIR" => env("ERL_INTERFACE_LIB_DIR", erl_ei_lib_dir),
+        "ERL_INTERFACE_INCLUDE_DIR" => env("ERL_INTERFACE_INCLUDE_DIR", erl_ei_include_dir)
       },
-      env
+      default_env
     )
+  end
+
+  defp env(var, default) do
+    System.get_env(var) || default
   end
 end
