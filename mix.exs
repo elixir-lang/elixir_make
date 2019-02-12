@@ -4,7 +4,7 @@ defmodule ElixirMake.Mixfile do
   def project do
     [
       app: :elixir_make,
-      version: "0.5.0",
+      version: "0.5.1",
       elixir: "~> 1.1",
       build_embedded: Mix.env() == :prod,
       description: "A Make compiler for Mix",
