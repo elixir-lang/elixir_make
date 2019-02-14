@@ -251,7 +251,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
     Map.merge(
       %{
-        # Don't use Mix.target/0 here for backwards compatability. 
+        # Don't use Mix.target/0 here for backwards compatibility. 
         "MIX_TARGET" => env("MIX_TARGET", "host"),
         "MIX_ENV" => to_string(Mix.env()),
         "MIX_BUILD_PATH" => Mix.Project.build_path(config),
