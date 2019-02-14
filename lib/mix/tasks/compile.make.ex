@@ -244,14 +244,14 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   defp default_env(config, default_env) do
     root_dir = :code.root_dir()
     erl_interface_dir = Path.join(root_dir, "usr")
-    [erts_dir] = Path.wildcard(Path.join(root_dir, "erts*"))
+    erts_dir = Path.join(root_dir, "erts-#{:erlang.system_info(:version)}")
     erts_include_dir = Path.join(erts_dir, "include")
     erl_ei_lib_dir = Path.join(erl_interface_dir, "lib")
     erl_ei_include_dir = Path.join(erl_interface_dir, "include")
 
     Map.merge(
       %{
-        # Don't use Mix.target/0 here for backwards compatability. 
+        # Don't use Mix.target/0 here for backwards compatability
         "MIX_TARGET" => env("MIX_TARGET", "host"),
         "MIX_ENV" => to_string(Mix.env()),
         "MIX_BUILD_PATH" => Mix.Project.build_path(config),
