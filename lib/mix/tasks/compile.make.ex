@@ -144,6 +144,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     env = Keyword.get(config, :make_env, %{})
     env = if is_function(env), do: env.(), else: env
     env = default_env(config, env)
+
     # In OTP 19, Erlang's `open_port/2` ignores the current working
     # directory when expanding relative paths. This means that `:make_cwd`
     # must be an absolute path. This is a different behaviour from earlier
@@ -152,7 +153,9 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     cwd = Keyword.get(config, :make_cwd, ".") |> Path.expand(File.cwd!())
     error_msg = Keyword.get(config, :make_error_message, :default) |> os_specific_error_msg()
     custom_args = Keyword.get(config, :make_args, [])
-    args = args_for_makefile(exec, makefile) ++ targets ++ custom_args
+
+    base = exec |> Path.basename() |> Path.rootname()
+    args = args_for_makefile(base, makefile) ++ targets ++ custom_args
 
     case cmd(exec, args, cwd, env, "--verbose" in task_args) do
       0 ->
