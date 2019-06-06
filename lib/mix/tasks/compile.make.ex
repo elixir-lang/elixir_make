@@ -116,8 +116,8 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   def run(args) do
     config = Mix.Project.config()
     Mix.shell().print_app()
+    Mix.Project.ensure_structure()
     build(config, args)
-    Mix.Project.build_structure()
     :ok
   end
 

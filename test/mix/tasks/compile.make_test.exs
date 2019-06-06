@@ -19,7 +19,13 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
     System.delete_env("ERTS_INCLUDE_DIR")
     System.delete_env("ERL_INTERFACE_LIB_DIR")
     System.delete_env("ERL_INTERFACE_INCLUDE_DIR")
-    in_fixture(fn -> File.rm_rf!("Makefile") end)
+
+    in_fixture(fn ->
+      File.rm_rf!("Makefile")
+      File.rm_rf!("_build")
+      File.rm_rf!("priv")
+    end)
+
     :ok
   end
 
@@ -261,6 +267,29 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
       with_project_config([make_args: ["--print-directory"]], fn ->
         output = capture_io(fn -> run([]) end)
         assert output =~ "make: Entering directory"
+      end)
+    end)
+  end
+
+  test "build_embedded doesn't clobber build artifacts" do
+    in_fixture(fn ->
+      build_file_path = "./_build/test/lib/my_app/priv/build_file"
+
+      File.mkdir!("priv")
+
+      File.write!("Makefile", """
+      all:
+      \ttouch #{build_file_path}
+      """)
+
+      with_project_config([build_embedded: true], fn ->
+        refute File.exists?(build_file_path)
+
+        capture_io(fn ->
+          Mix.Tasks.Compile.run([])
+        end)
+
+        assert File.exists?(build_file_path)
       end)
     end)
   end
