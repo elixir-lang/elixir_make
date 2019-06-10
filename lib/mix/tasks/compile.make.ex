@@ -65,11 +65,12 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
     * `MIX_TARGET`
     * `MIX_ENV`
-    * `MIX_BUILD_PATH`
-    * `MIX_COMPILE_PATH`
-    * `MIX_CONSOLIDATION_PATH`
-    * `MIX_DEPS_PATH`
-    * `MIX_MANIFEST_PATH`
+    * `MIX_BUILD_PATH` - same as `Mix.Project.build_path/0`
+    * `MIX_APP_PATH` - same as `Mix.Project.app_path/0`
+    * `MIX_COMPILE_PATH` - same as `Mix.Project.compile_path/0`
+    * `MIX_CONSOLIDATION_PATH` - same as `Mix.Project.consolidation_path/0`
+    * `MIX_DEPS_PATH` - same as `Mix.Project.deps_path/0`
+    * `MIX_MANIFEST_PATH` - same as `Mix.Project.manifest_path/0`
     * `ERL_EI_LIBDIR`
     * `ERL_EI_INCLUDE_DIR`
     * `ERTS_INCLUDE_DIR`
@@ -112,13 +113,25 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   and "mix test" commands.
   """
 
+  @return if Version.match?(System.version(), "~> 1.9"), do: {:ok, []}, else: :ok
+
   @spec run(OptionParser.argv()) :: :ok | no_return
   def run(args) do
     config = Mix.Project.config()
     Mix.shell().print_app()
+    priv? = File.dir?("priv")
     Mix.Project.ensure_structure()
     build(config, args)
-    :ok
+
+    # IF there was no priv before and now there is one, we assume
+    # the user wants to copy it. If priv already existed and was
+    # written to it, then it won't be copied if build_embedded is
+    # set to true.
+    if not priv? and File.dir?("priv") do
+      Mix.Project.build_structure()
+    end
+
+    @return
   end
 
   # This is called by Elixir when `mix clean` is run and `:elixir_make` is in
@@ -258,8 +271,11 @@ defmodule Mix.Tasks.Compile.ElixirMake do
         "MIX_TARGET" => env("MIX_TARGET", "host"),
         "MIX_ENV" => to_string(Mix.env()),
         "MIX_BUILD_PATH" => Mix.Project.build_path(config),
+        "MIX_APP_PATH" => Mix.Project.app_path(config),
         "MIX_COMPILE_PATH" => Mix.Project.compile_path(config),
+        "MIX_CONSOLIDATION_PATH" => Mix.Project.consolidation_path(config),
         "MIX_DEPS_PATH" => Mix.Project.deps_path(config),
+        "MIX_MANIFEST_PATH" => Mix.Project.manifest_path(config),
 
         # Rebar naming
         "ERL_EI_LIBDIR" => env("ERL_EI_LIBDIR", erl_ei_lib_dir),
