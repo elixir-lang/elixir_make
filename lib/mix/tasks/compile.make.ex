@@ -186,6 +186,14 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     error_msg = Keyword.get(config, :make_error_message, :default) |> os_specific_error_msg()
     custom_args = Keyword.get(config, :make_args, [])
 
+    if String.contains?(cwd, " ") do
+      IO.warn(
+        "the absolute path to the makefile for this project contains spaces. Make might " <>
+          "not work properly if spaces are present in the path. The absolute path is: " <>
+          inspect(cwd)
+      )
+    end
+
     base = exec |> Path.basename() |> Path.rootname()
     args = args_for_makefile(base, makefile) ++ targets ++ custom_args
 

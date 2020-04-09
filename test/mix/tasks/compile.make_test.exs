@@ -97,6 +97,22 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
     end)
   end
 
+  test "warns if the cwd contains a space" do
+    in_fixture(fn ->
+      File.mkdir_p!("subdir with spaces")
+
+      File.write!("subdir with spaces/Makefile", """
+      all:
+      \t@echo "subdir_with_spaces"
+      """)
+
+      with_project_config([make_cwd: "subdir with spaces"], fn ->
+        assert capture_io(:stderr, fn -> run([]) end) =~
+                 "the absolute path to the makefile for this project contains spaces."
+      end)
+    end)
+  end
+
   test "specifying env" do
     in_fixture(fn ->
       File.write!("Makefile", """
