@@ -115,7 +115,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
   @windows_error_msg ~S"""
   One option is to install a recent version of
-  [Visual C++ Build Tools](http://landinghub.visualstudio.com/visual-cpp-build-tools)
+  [Visual C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
   either manually or using [Chocolatey](https://chocolatey.org/) -
   `choco install VisualCppBuildTools`.
 
