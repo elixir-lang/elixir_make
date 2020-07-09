@@ -26,7 +26,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
     * `:make_executable` - (binary or `:default`) it's the executable to use as the
       `make` program. If not provided or if `:default`, it defaults to `"nmake"`
-      on Windows, `"gmake"` on FreeBSD and OpenBSD, and `"make"` on everything
+      on Windows, `"gmake"` on FreeBSD, OpenBSD and NetBSD, and `"make"` on everything
       else. You can, for example, customize which executable to use on a
       specific OS and use `:default` for every other OS. If the `MAKE`
       environment variable is present, that is used as the value of this option.
@@ -245,7 +245,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       {:win32, _} ->
         "nmake"
 
-      {:unix, type} when type in [:freebsd, :openbsd] ->
+      {:unix, type} when type in [:freebsd, :openbsd, :netbsd] ->
         "gmake"
 
       _ ->
