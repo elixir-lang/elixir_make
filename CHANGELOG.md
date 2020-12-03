@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.2
+
+  * Fix permissions for some files in the repository.
+
 ## v0.6.1
 
   * Warn on paths that contain spaces.
