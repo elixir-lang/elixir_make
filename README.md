@@ -1,8 +1,13 @@
 # A Make compiler for Mix
 
 [![Build Status](https://github.com/elixir-lang/elixir_make/workflows/CI/badge.svg)](https://github.com/elixir-lang/elixir_make/actions)
+[![Hex version](https://img.shields.io/hexpm/v/elixir_make.svg "Hex version")](https://hex.pm/packages/elixir_make)
 
 This project provides a Mix compiler that makes it straight-forward to use makefiles in your Mix projects.
+
+## Documentation
+
+API documentation is available at [https://hexdocs.pm/elixir_make](https://hexdocs.pm/elixir_make)
 
 ## Usage
 
