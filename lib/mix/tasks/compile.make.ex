@@ -283,7 +283,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   end
 
   # Returns a map of default environment variables
-  # Defauts may be overwritten.
+  # Defaults may be overwritten.
   defp default_env(config, default_env) do
     root_dir = :code.root_dir()
     erl_interface_dir = Path.join(root_dir, "usr")
@@ -294,7 +294,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
     Map.merge(
       %{
-        # Don't use Mix.target/0 here for backwards compatability
+        # Don't use Mix.target/0 here for backwards compatibility
         "MIX_TARGET" => env("MIX_TARGET", "host"),
         "MIX_ENV" => to_string(Mix.env()),
         "MIX_BUILD_PATH" => Mix.Project.build_path(config),
