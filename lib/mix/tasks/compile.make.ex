@@ -140,7 +140,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     pacman -S --noconfirm --needed base-devel autoconf automake make libtool git \
       mingw-w64-x86_64-toolchain mingw-w64-x86_64-openssl mingw-w64-x86_64-libtool
 
-  This will give you a compilation suite nearly compatible with the standard tools of MacOS and Linux.
+  This will give you a compilation suite nearly compatible with Unix' standard tools.
   """
 
   @return if Version.match?(System.version(), "~> 1.9"), do: {:ok, []}, else: :ok
