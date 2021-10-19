@@ -130,6 +130,17 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   This should open up a command prompt with the necessary environment variables
   set, and from which you will be able to run the "mix compile", "mix deps.compile",
   and "mix test" commands.
+
+  Another option is to install the Linux compatiblity tools from [MSYS2](https://www.msys2.org/).
+
+  After installation start the msys64 bit terminal from the start menu and install the
+  C/C++ compiler toolchain. E.g.:
+
+    pacman -S --noconfirm pacman-mirrors pkg-config
+    pacman -S --noconfirm --needed base-devel autoconf automake make libtool git \
+      mingw-w64-x86_64-toolchain mingw-w64-x86_64-openssl mingw-w64-x86_64-libtool
+
+  This will give you a compilation suite nearly compatible with Unix' standard tools.
   """
 
   @return if Version.match?(System.version(), "~> 1.9"), do: {:ok, []}, else: :ok
@@ -243,7 +254,11 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   defp os_specific_executable(:default) do
     case :os.type() do
       {:win32, _} ->
-        "nmake"
+        cond do
+          System.find_executable("nmake") -> "nmake"
+          System.find_executable("make") -> "make"
+          true -> "nmake"
+        end
 
       {:unix, type} when type in [:freebsd, :openbsd, :netbsd] ->
         "gmake"
