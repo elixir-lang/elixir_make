@@ -1,7 +1,7 @@
 defmodule ElixirMake.Mixfile do
   use Mix.Project
 
-  @version "0.6.2"
+  @version "0.6.3"
 
   def project do
     [
@@ -15,9 +15,6 @@ defmodule ElixirMake.Mixfile do
     ]
   end
 
-  # Configuration for the OTP application
-  #
-  # Type "mix help compile.app" for more information
   def application do
     [applications: []]
   end
