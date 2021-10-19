@@ -137,7 +137,8 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   C/C++ compiler toolchain. E.g.:
 
     pacman -S --noconfirm pacman-mirrors pkg-config
-    pacman -S --noconfirm --needed base-devel autoconf automake make libtool mingw-w64-x86_64-toolchain mingw-w64-x86_64-openssl mingw-w64-x86_64-libtool git
+    pacman -S --noconfirm --needed base-devel autoconf automake make libtool git \
+      mingw-w64-x86_64-toolchain mingw-w64-x86_64-openssl mingw-w64-x86_64-libtool
 
   This will give you a compilation suite nearly compatible with the standard tools of MacOS and Linux.
   """
