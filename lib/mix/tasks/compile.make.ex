@@ -326,7 +326,13 @@ defmodule Mix.Tasks.Compile.ElixirMake do
         # erlang.mk naming
         "ERTS_INCLUDE_DIR" => env("ERTS_INCLUDE_DIR", erts_include_dir),
         "ERL_INTERFACE_LIB_DIR" => env("ERL_INTERFACE_LIB_DIR", erl_ei_lib_dir),
-        "ERL_INTERFACE_INCLUDE_DIR" => env("ERL_INTERFACE_INCLUDE_DIR", erl_ei_include_dir)
+        "ERL_INTERFACE_INCLUDE_DIR" => env("ERL_INTERFACE_INCLUDE_DIR", erl_ei_include_dir),
+
+        # Disable default erlang values
+        "BINDIR" => nil,
+        "ROOTDIR" => nil,
+        "PROGNAME" => nil,
+        "EMU" => nil
       },
       default_env
     )
