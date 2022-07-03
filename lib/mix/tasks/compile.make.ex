@@ -97,30 +97,30 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
   use Mix.Task
 
-  @user_config Application.compile_env(:fennec_precompile, :config, [])
   @return if Version.match?(System.version(), "~> 1.9"), do: {:ok, []}, else: :ok
 
   def run(args) do
-    app = Mix.Project.config()[:app]
-    config =
-      Mix.Project.config()
-      |> Keyword.merge(Keyword.get(@user_config, app, []), fn _key, _mix, user_config -> user_config end)
-      |> FennecPrecompile.Config.new()
+    config = Mix.Project.config()
+    app = config[:app]
+    version = config[:version]
+    force_build = pre_release?(version) or Keyword.get(config, :make_force_build, false)
+    precompiler = config[:make_precompiler]
 
-    if config.force_build == true do
+    if force_build == true or precompiler == nil do
       Mix.Tasks.ElixirMake.Precompile.build_native(args)
     else
-      Mix.Tasks.ElixirMake.Precompile.write_metadata_to_file(config)
-      priv_dir = Mix.Tasks.ElixirMake.Precompile.app_priv(app)
+      context = precompiler_context(args, precompiler)
+      nif_filename = config[:make_nif_filename]
+      priv_dir = ElixirMake.Artefact.app_priv(app)
 
       load_path =
         case :os.type() do
-          {:win32, _} -> Path.join([priv_dir, "#{config.nif_filename}.dll"])
-          _ -> Path.join([priv_dir, "#{config.nif_filename}.so"])
+          {:win32, _} -> Path.join([priv_dir, "#{nif_filename}.dll"])
+          _ -> Path.join([priv_dir, "#{nif_filename}.so"])
         end
 
       with {:skip_if_exists, false} <- {:skip_if_exists, File.exists?(load_path)},
-          {:error, precomp_error} <- Mix.Tasks.ElixirMake.Precompile.download_or_reuse_nif_file(config) do
+          {:error, precomp_error} <- Mix.Tasks.ElixirMake.Precompile.download_or_reuse_nif_file(context) do
         message = """
         Error while downloading precompiled NIF: #{precomp_error}.
         You can force the project to build from scratch with:
@@ -134,6 +134,10 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     end
   end
 
+  defp precompiler_context(args, FennecPrecompile) do
+    Mix.Tasks.ElixirMake.FennecPrecompile.precompiler_context(args)
+  end
+
   # This is called by Elixir when `mix clean` is run and `:elixir_make` is in
   # the list of compilers.
   def clean() do
@@ -143,7 +147,11 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     if clean_targets do
       config
       |> Keyword.put(:make_targets, clean_targets)
-      |> Mix.Tasks.ElixirMake.Precompile.build([])
+      |> ElixirMake.Compile.build([])
     end
+  end
+
+  defp pre_release?(version) do
+    "dev" in Version.parse!(version).pre
   end
 end

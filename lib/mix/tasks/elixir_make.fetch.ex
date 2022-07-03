@@ -30,23 +30,21 @@ defmodule Mix.Tasks.ElixirMake.Fetch do
 
   @impl true
   def run(flags) when is_list(flags) do
-    app = Mix.Project.config()[:app]
-
     {options, _args, _invalid} = OptionParser.parse(flags, strict: @switches)
 
     urls =
       cond do
         Keyword.get(options, :all) ->
-          Mix.Tasks.ElixirMake.Precompile.available_nif_urls(app)
+          Mix.Tasks.ElixirMake.Precompile.available_nif_urls()
 
         Keyword.get(options, :only_local) ->
-          [Mix.Tasks.ElixirMake.Precompile.current_target_nif_url(app)]
+          [Mix.Tasks.ElixirMake.Precompile.current_target_nif_url()]
 
         true ->
           raise "you need to specify either \"--all\" or \"--only-local\" flags"
       end
 
-    result = Mix.Tasks.ElixirMake.Precompile.download_nif_artifacts_with_checksums!(urls, options)
+    result = ElixirMake.Artefact.download_nif_artifacts_with_checksums!(urls, options)
 
     if Keyword.get(options, :print) do
       result
@@ -58,6 +56,6 @@ defmodule Mix.Tasks.ElixirMake.Fetch do
       |> IO.puts()
     end
 
-    Mix.Tasks.ElixirMake.Precompile.write_checksum!(app, result)
+    ElixirMake.Artefact.write_checksum!(Mix.Project.config()[:app], result)
   end
 end
