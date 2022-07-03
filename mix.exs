@@ -23,7 +23,7 @@ defmodule ElixirMake.Mixfile do
   defp deps do
     [
       {:castore, "~> 0.1", runtime: false},
-      {:fennec_precompile, "~> 0.2", github: "cocoa-xu/fennec_precompile", branch: "behaviour-only"},
+      {:fennec_precompile, "~> 0.2", runtime: false},
       {:ex_doc, "~> 0.20", only: :docs}
     ]
   end
