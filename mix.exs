@@ -11,12 +11,21 @@ defmodule ElixirMake.Mixfile do
       description: "A Make compiler for Mix",
       package: package(),
       docs: docs(),
-      deps: [{:ex_doc, "~> 0.20", only: :docs}]
+      deps: deps(),
+      make_precompiler: FennecPrecompile.Precompiler
     ]
   end
 
   def application do
-    [applications: []]
+    [extra_applications: [:logger, :crypto, :inets, :public_key, :fennec_precompile]]
+  end
+
+  defp deps do
+    [
+      {:castore, "~> 0.1", runtime: false},
+      {:fennec_precompile, "~> 0.2", github: "cocoa-xu/fennec_precompile", branch: "behaviour-only"},
+      {:ex_doc, "~> 0.20", only: :docs}
+    ]
   end
 
   defp package do
