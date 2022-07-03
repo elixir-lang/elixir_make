@@ -31,12 +31,16 @@ defmodule Mix.Tasks.ElixirMake.FennecPrecompile do
     app = Mix.Project.config()[:app]
     version = Mix.Project.config()[:version]
     nif_version = ElixirMake.Compile.current_nif_version()
-    precompiled_artefacts = do_precompile(app, version, nif_version, args, targets, saved_cwd, cache_dir)
+
+    precompiled_artefacts =
+      do_precompile(app, version, nif_version, args, targets, saved_cwd, cache_dir)
+
     with {:ok, target} <- FennecPrecompile.SystemInfo.target(@crosscompiler) do
       tar_filename = ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
       cached_tar_gz = Path.join([cache_dir, tar_filename])
       ElixirMake.Artefact.restore_nif_file(cached_tar_gz, app)
     end
+
     Mix.Project.build_structure()
     {:ok, precompiled_artefacts}
   end
@@ -55,8 +59,11 @@ defmodule Mix.Tasks.ElixirMake.FennecPrecompile do
   def precompiler_context(_args) do
     config = Mix.Project.config()
     app = config[:app]
+
     config
-    |> Keyword.merge(Keyword.get(@user_config, app, []), fn _key, _mix, user_config -> user_config end)
+    |> Keyword.merge(Keyword.get(@user_config, app, []), fn _key, _mix, user_config ->
+      user_config
+    end)
     |> FennecPrecompile.Config.new()
   end
 
@@ -67,27 +74,35 @@ defmodule Mix.Tasks.ElixirMake.FennecPrecompile do
 
     with {:ok, target} <- FennecPrecompile.SystemInfo.target(config.targets) do
       app = config.app
-      tar_filename = ElixirMake.Artefact.archive_filename(app, config.version, config.nif_version, target)
+
+      tar_filename =
+        ElixirMake.Artefact.archive_filename(app, config.version, config.nif_version, target)
+
       app_priv = ElixirMake.Artefact.app_priv(app)
       cached_tar_gz = Path.join([cache_dir, tar_filename])
 
       if !File.exists?(cached_tar_gz) do
         with :ok <- File.mkdir_p(cache_dir),
-             {:ok, tar_gz} <- ElixirMake.Artefact.download_archived_artefact(config.base_url, tar_filename),
+             {:ok, tar_gz} <-
+               ElixirMake.Artefact.download_archived_artefact(config.base_url, tar_filename),
              :ok <- File.write(cached_tar_gz, tar_gz) do
-            Logger.debug("NIF cached at #{cached_tar_gz} and extracted to #{app_priv}")
+          Logger.debug("NIF cached at #{cached_tar_gz} and extracted to #{app_priv}")
         end
       end
 
       with {:file_exists, true} <- {:file_exists, File.exists?(cached_tar_gz)},
-           {:file_integrity, :ok} <- {:file_integrity, ElixirMake.Artefact.check_file_integrity(cached_tar_gz, app)},
-           {:restore_nif, true} <- {:restore_nif, ElixirMake.Artefact.restore_nif_file(cached_tar_gz, app)} do
-            :ok
+           {:file_integrity, :ok} <-
+             {:file_integrity, ElixirMake.Artefact.check_file_integrity(cached_tar_gz, app)},
+           {:restore_nif, true} <-
+             {:restore_nif, ElixirMake.Artefact.restore_nif_file(cached_tar_gz, app)} do
+        :ok
       else
         {:file_exists, _} ->
           {:error, "Cache file not exists or cannot download"}
+
         {:file_integrity, _} ->
           {:error, "Cache file integrity check failed"}
+
         {:restore_nif, status} ->
           {:error, "Cannot restore nif from cache: #{inspect(status)}"}
       end
@@ -102,7 +117,8 @@ defmodule Mix.Tasks.ElixirMake.FennecPrecompile do
     case metadata do
       %{targets: targets, base_url: base_url, version: version} ->
         for target_triple <- targets, nif_version <- @available_nif_versions do
-          archive_filename = ElixirMake.Artefact.archive_filename(app, version, nif_version, target_triple)
+          archive_filename =
+            ElixirMake.Artefact.archive_filename(app, version, nif_version, target_triple)
 
           ElixirMake.Artefact.archive_file_url(base_url, archive_filename)
         end
@@ -118,6 +134,7 @@ defmodule Mix.Tasks.ElixirMake.FennecPrecompile do
     app = Mix.Project.config()[:app]
     metadata = ElixirMake.Artefact.metadata(app)
     nif_version = ElixirMake.Compile.current_nif_version()
+
     case metadata do
       %{base_url: base_url, target: target, version: version} ->
         archive_filename = ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
@@ -137,6 +154,7 @@ defmodule Mix.Tasks.ElixirMake.FennecPrecompile do
     version = Mix.Project.config()[:version]
     nif_version = ElixirMake.Compile.current_nif_version()
     do_precompile(app, version, nif_version, args, targets, saved_cwd, cache_dir)
+
     if post_clean do
       ElixirMake.Artefact.make_priv_dir(app, :clean)
     else
@@ -146,6 +164,7 @@ defmodule Mix.Tasks.ElixirMake.FennecPrecompile do
         ElixirMake.Artefact.restore_nif_file(cached_tar_gz, app)
       end
     end
+
     Mix.Project.build_structure()
     @return
   end
@@ -188,24 +207,37 @@ defmodule Mix.Tasks.ElixirMake.FennecPrecompile do
     Enum.reduce(targets, [], fn target, checksums ->
       Logger.debug("Current compiling target: #{target}")
       ElixirMake.Artefact.make_priv_dir(app, :clean)
+
       {cc, cxx} =
         case {:os.type(), target} do
           {{:unix, :darwin}, "x86_64-macos" <> _} ->
             {"gcc -arch x86_64", "g++ -arch x86_64"}
+
           {{:unix, :darwin}, "aarch64-macos" <> _} ->
             {"gcc -arch arm64", "g++ -arch arm64"}
+
           _ ->
             {"zig cc -target #{target}", "zig c++ -target #{target}"}
         end
+
       System.put_env("CC", cc)
       System.put_env("CXX", cxx)
       System.put_env("CPP", cxx)
       ElixirMake.Compile.compile(args)
 
       {_archive_full_path, archive_tar_gz, checksum_algo, checksum} =
-        ElixirMake.Artefact.create_precompiled_archive(app, version, nif_version, target, cache_dir)
+        ElixirMake.Artefact.create_precompiled_archive(
+          app,
+          version,
+          nif_version,
+          target,
+          cache_dir
+        )
 
-      [{target, %{path: archive_tar_gz, checksum_algo: checksum_algo, checksum: checksum}} | checksums]
+      [
+        {target, %{path: archive_tar_gz, checksum_algo: checksum_algo, checksum: checksum}}
+        | checksums
+      ]
     end)
   end
 
@@ -216,7 +248,9 @@ defmodule Mix.Tasks.ElixirMake.FennecPrecompile do
     cache_dir = FennecPrecompile.SystemInfo.cache_dir()
 
     with {:ok, target} <- FennecPrecompile.SystemInfo.target(@crosscompiler) do
-      archived_artefact_file = ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
+      archived_artefact_file =
+        ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
+
       metadata = %{
         app: app,
         cached_tar_gz: Path.join([cache_dir, archived_artefact_file]),
@@ -228,8 +262,7 @@ defmodule Mix.Tasks.ElixirMake.FennecPrecompile do
 
       ElixirMake.Artefact.write_metadata(app, metadata)
     end
+
     :ok
   end
-
-
 end

@@ -11,7 +11,7 @@ defmodule ElixirMake.Mixfile do
       description: "A Make compiler for Mix",
       package: package(),
       docs: docs(),
-      deps: deps(),
+      deps: deps()
     ]
   end
 

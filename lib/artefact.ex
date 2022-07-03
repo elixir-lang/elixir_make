@@ -12,7 +12,9 @@ defmodule ElixirMake.Artefact do
           algo
           |> :crypto.hash(content)
           |> Base.encode16(case: :lower)
-          {:ok, "#{algo}", "#{file_hash}"}
+
+        {:ok, "#{algo}", "#{file_hash}"}
+
       {:error, reason} ->
         {:error,
          "cannot read the file for checksum comparison: #{inspect(file_path)}. " <>
@@ -193,7 +195,9 @@ defmodule ElixirMake.Artefact do
     file = checksum_file(app)
 
     pairs =
-      for {_target, %{path: path, checksum: checksum, checksum_algo: algo}} <- precompiled_artefacts, into: %{} do
+      for {_target, %{path: path, checksum: checksum, checksum_algo: algo}} <-
+            precompiled_artefacts,
+          into: %{} do
         basename = Path.basename(path)
         checksum = "#{algo}:#{checksum}"
         {basename, checksum}
@@ -223,9 +227,11 @@ defmodule ElixirMake.Artefact do
   def cache_dir(sub_dir \\ "") do
     cache_opts = if System.get_env("MIX_XDG"), do: %{os: :linux}, else: %{}
     cache_dir = :filename.basedir(:user_cache, "", cache_opts)
+
     cache_dir =
       System.get_env("ELIXIR_MAKE_CACHE_DIR", cache_dir)
       |> Path.join(sub_dir)
+
     File.mkdir_p!(cache_dir)
     cache_dir
   end
@@ -247,7 +253,9 @@ defmodule ElixirMake.Artefact do
 
     File.cd!(saved_cwd)
 
-    {:ok, algo, checksum} = ElixirMake.Artefact.compute_checksum(archive_full_path, ElixirMake.Artefact.checksum_algo())
+    {:ok, algo, checksum} =
+      ElixirMake.Artefact.compute_checksum(archive_full_path, ElixirMake.Artefact.checksum_algo())
+
     {archive_full_path, archive_tar_gz, algo, checksum}
   end
 
@@ -265,6 +273,7 @@ defmodule ElixirMake.Artefact do
 
   defp build_file_list_at(dir, visited, filelist) do
     visited? = Map.get(visited, dir)
+
     if visited? do
       {filelist, visited}
     else
@@ -275,13 +284,16 @@ defmodule ElixirMake.Artefact do
         {true, {:error, _}} ->
           File.cd!(dir)
           cur_filelist = File.ls!()
+
           {files, folders} =
             Enum.reduce(cur_filelist, {[], []}, fn filepath, {files, folders} ->
               if File.dir?(filepath) do
                 symlink_dir? = Path.join([File.cwd!(), filepath])
+
                 case File.read_link(symlink_dir?) do
                   {:error, _} ->
                     {files, [filepath | folders]}
+
                   {:ok, _} ->
                     {[Path.join([dir, filepath]) | files], folders}
                 end
@@ -289,18 +301,24 @@ defmodule ElixirMake.Artefact do
                 {[Path.join([dir, filepath]) | files], folders}
               end
             end)
+
           File.cd!(saved_cwd)
 
           filelist = files ++ filelist ++ [dir]
+
           {files_in_folder, visited} =
             Enum.reduce(folders, {[], visited}, fn folder_path, {files_in_folder, visited} ->
-              {filelist, visited} = build_file_list_at(Path.join([dir, folder_path]), visited, files_in_folder)
+              {filelist, visited} =
+                build_file_list_at(Path.join([dir, folder_path]), visited, files_in_folder)
+
               {files_in_folder ++ filelist, visited}
             end)
+
           filelist = filelist ++ files_in_folder
           {filelist, visited}
-      _ ->
-        {filelist, visited}
+
+        _ ->
+          {filelist, visited}
       end
     end
   end
