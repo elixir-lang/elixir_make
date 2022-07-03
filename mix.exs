@@ -12,7 +12,6 @@ defmodule ElixirMake.Mixfile do
       package: package(),
       docs: docs(),
       deps: deps(),
-      make_precompiler: FennecPrecompile
     ]
   end
 
