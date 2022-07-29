@@ -386,6 +386,7 @@ defmodule ElixirMake.Artefact do
 
   def metadata(app) do
     Logger.debug("app: #{inspect(metadata_file(app))}")
+
     app
     |> metadata_file()
     |> read_map_from_file()

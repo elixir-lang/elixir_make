@@ -137,6 +137,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
   defp precompiler_context(args, module) do
     module = Module.concat([Mix.Tasks.ElixirMake, module])
+
     if Code.ensure_loaded?(module) do
       Kernel.apply(module, :precompiler_context, [args])
     else
