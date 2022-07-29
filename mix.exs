@@ -16,13 +16,12 @@ defmodule ElixirMake.Mixfile do
   end
 
   def application do
-    [extra_applications: [:logger, :crypto, :inets, :public_key, :fennec_precompile]]
+    [extra_applications: [:logger, :crypto, :inets, :public_key]]
   end
 
   defp deps do
     [
       {:castore, "~> 0.1", runtime: false},
-      {:fennec_precompile, "~> 0.2", runtime: false},
       {:ex_doc, "~> 0.20", only: :docs}
     ]
   end

@@ -135,8 +135,13 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     end
   end
 
-  defp precompiler_context(args, FennecPrecompile) do
-    Mix.Tasks.ElixirMake.FennecPrecompile.precompiler_context(args)
+  defp precompiler_context(args, module) do
+    module = Module.concat([Mix.Tasks.ElixirMake, module])
+    if Code.ensure_loaded?(module) do
+      Kernel.apply(module, :precompiler_context, [args])
+    else
+      Mix.raise("requested precompiler module `#{inspect(module)}` is not loaded")
+    end
   end
 
   # This is called by Elixir when `mix clean` is run and `:elixir_make` is in

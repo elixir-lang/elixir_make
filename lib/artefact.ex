@@ -354,6 +354,7 @@ defmodule ElixirMake.Artefact do
 
   def write_metadata(app, metadata) do
     metadata_file = metadata_file(app)
+    Logger.debug("metadata_file: #{inspect(metadata_file)}")
     existing = read_map_from_file(metadata_file)
 
     unless Map.equal?(metadata, existing) do
@@ -384,6 +385,7 @@ defmodule ElixirMake.Artefact do
   end
 
   def metadata(app) do
+    Logger.debug("app: #{inspect(metadata_file(app))}")
     app
     |> metadata_file()
     |> read_map_from_file()

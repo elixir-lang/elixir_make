@@ -1,9 +1,29 @@
 defmodule Mix.Tasks.ElixirMake.Precompile do
   use Mix.Task
 
+  @doc """
+  The precompiler should compile for the host natively
+  """
   @callback build_native(OptionParser.argv()) :: :ok | {:ok, []} | no_return
-  @callback download_or_reuse_nif_file(term) :: :ok | {:error, String.t()}
+
+  @doc """
+  The precompiler should download or reuse nif file for current target.
+
+  ## Paramters
+
+    - `context`: Precompiler context returned by the `precompiler_context` callback.
+  """
+  @callback download_or_reuse_nif_file(context :: term()) :: :ok | {:error, String.t()}
+
+  @doc """
+  Precompiler context
+  """
   @callback precompiler_context(OptionParser.argv()) :: term()
+
+  @doc """
+  Post actions to run after all precompiling tasks
+  """
+  @callback post_precompile(context :: term()) :: :ok
 
   @doc """
   Returns URLs for NIFs based on its module name.
@@ -23,8 +43,19 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
     precompile(args, Mix.Project.config()[:make_precompiler])
   end
 
-  defp precompile(args, FennecPrecompile) do
-    Mix.Tasks.ElixirMake.FennecPrecompile.run(args)
+  defp ensure_precompiler_module!(module) do
+    if Code.ensure_loaded?(module) do
+      module
+    else
+      Mix.raise("requested precompiler module `#{inspect(module)}` is not loaded")
+    end
+  end
+
+  defp precompile(args, module) when module != nil do
+    module = ensure_precompiler_module!(Module.concat([Mix.Tasks.ElixirMake, module]))
+    Kernel.apply(module, :run, [args])
+    context = Kernel.apply(module, :precompiler_context, [args])
+    Kernel.apply(module, :post_precompile, [context])
   end
 
   def build_native(args) do
@@ -35,8 +66,9 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
     ElixirMake.Compile.compile(args)
   end
 
-  defp precompile_build_native(args, FennecPrecompile) do
-    Mix.Tasks.ElixirMake.FennecPrecompile.build_native(args)
+  defp precompile_build_native(args, module) do
+    module = ensure_precompiler_module!(Module.concat([Mix.Tasks.ElixirMake, module]))
+    Kernel.apply(module, :build_native, [args])
   end
 
   def available_nif_urls() do
@@ -47,8 +79,9 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
     []
   end
 
-  defp available_nif_urls(FennecPrecompile) do
-    Mix.Tasks.ElixirMake.FennecPrecompile.available_nif_urls()
+  defp available_nif_urls(module) do
+    module = ensure_precompiler_module!(Module.concat([Mix.Tasks.ElixirMake, module]))
+    Kernel.apply(module, :available_nif_urls, [])
   end
 
   def download_or_reuse_nif_file(context) do
@@ -59,8 +92,9 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
     {:error, "`make_precompiler` is not specified"}
   end
 
-  defp download_or_reuse_nif_file(context, FennecPrecompile) do
-    Mix.Tasks.ElixirMake.FennecPrecompile.download_or_reuse_nif_file(context)
+  defp download_or_reuse_nif_file(context, module) do
+    module = ensure_precompiler_module!(Module.concat([Mix.Tasks.ElixirMake, module]))
+    Kernel.apply(module, :download_or_reuse_nif_file, [context])
   end
 
   def current_target_nif_url() do
@@ -71,7 +105,8 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
     {:error, "`make_precompiler` is not specified"}
   end
 
-  def current_target_nif_url(FennecPrecompile) do
-    Mix.Tasks.ElixirMake.FennecPrecompile.current_target_nif_url()
+  def current_target_nif_url(module) do
+    module = ensure_precompiler_module!(Module.concat([Mix.Tasks.ElixirMake, module]))
+    Kernel.apply(module, :current_target_nif_url, [])
   end
 end
