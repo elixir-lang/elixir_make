@@ -1,6 +1,21 @@
 defmodule Mix.Tasks.ElixirMake.Precompile do
   use Mix.Task
 
+  @typedoc """
+  Target triplets
+  """
+  @type target :: String.t()
+
+  @doc """
+  This callback should return a list of triplets ("arch-os-abi") for all supported targets.
+  """
+  @callback all_supported_targets() :: [target]
+
+  @doc """
+  This callback should return the target triplet for current node.
+  """
+  @callback current_target() :: {:ok, target} | {:error, String.t()}
+
   @doc """
   This callback will be invoked when the user executes the `mix compile`
   (or `mix compile.elixir_make`) command.
@@ -10,6 +25,33 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   like `TARGET_ARCH=aarch64` and adjust compile arguments correspondingly.
   """
   @callback build_native(OptionParser.argv()) :: :ok | {:ok, []} | no_return
+
+  @typedoc """
+  A map that contains detailed info of a precompiled artefact.
+
+  - `:path`, path to the archived build artefact.
+  - `:checksum_algo`, name of the checksum algorithm.
+  - `:checksum`, the checksum of the archived build artefact using `:checksum_algo`.
+  """
+  @type precompiled_artefact_detail :: %{
+    :path => String.t(),
+    :checksum => String.t(),
+    :checksum_algo => atom
+  }
+
+  @typedoc """
+  A tuple that indicates the target and the corresponding precompiled artefact detail info.
+
+  `{target, precompiled_artefact_detail}`.
+  """
+  @type precompiled_artefact :: {target, precompiled_artefact_detail}
+
+  @doc """
+  This callback should precompile the library to the given target(s).
+
+  Returns a list of `{target, acrhived_artefacts}` if successfully compiled.
+  """
+  @callback precompile(OptionParser.argv(), [target]) :: {:ok, [precompiled_artefact]} | no_return
 
   @doc """
   This callback will be invoked when the NIF library is trying to load functions
@@ -65,7 +107,25 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   """
   @callback post_precompile(context :: term()) :: :ok
 
-  @impl true
+  @optional_callbacks precompiler_context: 1, post_precompile: 1
+
+  defmacro __using__(_opts) do
+    quote do
+      @behaviour Mix.Tasks.ElixirMake.Precompile
+      use Mix.Task
+
+      @return if Version.match?(System.version(), "~> 1.9"), do: {:ok, []}, else: :ok
+      def run(args) do
+        with {:ok, _precompiled_artefacts} <- precompile(args, all_supported_targets()) do
+          @return
+        else
+          error -> Logger.error("Error: #{inspect(error)}")
+        end
+      end
+    end
+  end
+
+  @impl Mix.Task
   def run(args) do
     precompile(args, Mix.Project.config()[:make_precompiler])
   end
