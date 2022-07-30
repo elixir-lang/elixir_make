@@ -139,6 +139,10 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
     end
   end
 
+  defp precompile(args, nil) do
+    Mix.raise("`make_precompiler` is not specified in `project`")
+  end
+
   defp precompile(args, module) when module != nil do
     module = ensure_precompiler_module!(module)
     ret = Kernel.apply(module, :run, [args])
@@ -188,7 +192,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   end
 
   defp download_or_reuse_nif_file(_context, nil) do
-    {:error, "`make_precompiler` is not specified"}
+    Mix.raise("`make_precompiler` is not specified in `project`")
   end
 
   defp download_or_reuse_nif_file(context, module) do
@@ -201,7 +205,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   end
 
   def current_target_nif_url(nil) do
-    {:error, "`make_precompiler` is not specified"}
+    Mix.raise("`make_precompiler` is not specified in `project`")
   end
 
   def current_target_nif_url(module) do
