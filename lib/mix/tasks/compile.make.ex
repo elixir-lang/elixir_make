@@ -128,7 +128,8 @@ defmodule Mix.Tasks.Compile.ElixirMake do
             mix elixir_make.precompile
         """
 
-        {:error, message}
+        Mix.raise(message)
+        :error
       else
         _ -> @return
       end
