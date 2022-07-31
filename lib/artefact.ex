@@ -47,7 +47,7 @@ defmodule ElixirMake.Artefact do
     tasks =
       Task.async_stream(urls, fn url -> {url, download_nif_artifact(url)} end, timeout: :infinity)
 
-    cache_dir = System.get_env("ELIXIE_MAKE_CACHE_DIR", ElixirMake.Artefact.cache_dir())
+    cache_dir = ElixirMake.Artefact.cache_dir()
 
     Enum.flat_map(tasks, fn {:ok, result} ->
       with {:download, {url, download_result}} <- {:download, result},
@@ -75,7 +75,7 @@ defmodule ElixirMake.Artefact do
 
         {context, result} ->
           if ignore_unavailable? do
-            Logger.debug(
+            Logger.warn(
               "Skip an unavailable NIF artifact. " <>
                 "Context: #{inspect(context)}. Reason: #{inspect(result)}"
             )
@@ -195,7 +195,7 @@ defmodule ElixirMake.Artefact do
     file = checksum_file(app)
 
     pairs =
-      for {_target, %{path: path, checksum: checksum, checksum_algo: algo}} <-
+      for %{path: path, checksum: checksum, checksum_algo: algo} <-
             precompiled_artefacts,
           into: %{} do
         basename = Path.basename(path)
