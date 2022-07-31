@@ -124,7 +124,10 @@ defmodule Mix.Tasks.Compile.ElixirMake do
              Mix.Tasks.ElixirMake.Precompile.download_or_reuse_nif_file(context) do
         message = """
         Error while downloading precompiled NIF: #{precomp_error}.
-        You can force the project to build from scratch with:
+        You can force the project to build from scratch for current host with:
+            mix elixir_make.compile
+
+        Or build for all available targets with:
             mix elixir_make.precompile
         """
 
