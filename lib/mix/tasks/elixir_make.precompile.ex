@@ -139,7 +139,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
     end
   end
 
-  defp precompile(args, nil) do
+  defp precompile(_args, nil) do
     Mix.raise("`make_precompiler` is not specified in `project`")
   end
 
