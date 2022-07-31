@@ -110,7 +110,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       Mix.Tasks.ElixirMake.Precompile.build_native(args)
     else
       context = precompiler_context(args, precompiler)
-      nif_filename = config[:make_nif_filename]
+      nif_filename = config[:make_nif_filename] || "#{app}"
       priv_dir = ElixirMake.Artefact.app_priv(app)
 
       load_path =
