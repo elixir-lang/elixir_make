@@ -11,12 +11,19 @@ defmodule ElixirMake.Mixfile do
       description: "A Make compiler for Mix",
       package: package(),
       docs: docs(),
-      deps: [{:ex_doc, "~> 0.20", only: :docs}]
+      deps: deps()
     ]
   end
 
   def application do
-    [applications: []]
+    [extra_applications: [:logger, :crypto, :inets, :public_key]]
+  end
+
+  defp deps do
+    [
+      {:castore, "~> 0.1", runtime: false},
+      {:ex_doc, "~> 0.20", only: :docs}
+    ]
   end
 
   defp package do
