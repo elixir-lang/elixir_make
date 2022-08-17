@@ -75,8 +75,8 @@ defmodule ElixirMake.Artefact do
 
         {context, result} ->
           if ignore_unavailable? do
-            Logger.warn(
-              "Skip an unavailable NIF artifact. " <>
+            Logger.info(
+              "Skipped unavailable NIF artifact. " <>
                 "Context: #{inspect(context)}. Reason: #{inspect(result)}"
             )
 

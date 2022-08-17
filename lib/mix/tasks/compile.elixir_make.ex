@@ -52,8 +52,19 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       can be used to suggest installing `gcc` if you're compiling a C
       dependency).
 
-    * `:make_args` - (list of binaries) it's a list of extra arguments to be
-      passed.
+    * `:make_args` - (list of binaries) it's a list of extra arguments to be passed.
+
+  The following options configure precompilation:
+
+    * `:make_precompiler` - the precompiled module to use. Defaults to none.
+
+    * `:make_nif_filename` - the filename of the compiled NIF without extension.
+      Defaults to the app name.
+
+    * `:make_force_build` - if build should be forced even if precompiled artefacts
+      are available. Defaults to true if the app has a `-dev` version flag.
+
+  See [the Precompilation guide](PRECOMPILATION_GUIDE.md) for more information.
 
   ## Default environment variables
 
@@ -97,8 +108,6 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
   use Mix.Task
 
-  @return if Version.match?(System.version(), "~> 1.9"), do: {:ok, []}, else: :ok
-
   def run(args) do
     config = Mix.Project.config()
     app = config[:app]
@@ -106,43 +115,37 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     force_build = pre_release?(version) or Keyword.get(config, :make_force_build, false)
     precompiler = config[:make_precompiler]
 
-    if force_build == true or precompiler == nil do
-      Mix.Tasks.ElixirMake.Precompile.build_native(args)
-    else
-      context = precompiler_context(args, precompiler)
-      nif_filename = config[:make_nif_filename] || "#{app}"
-      priv_dir = ElixirMake.Artefact.app_priv(app)
+    cond do
+      precompiler == nil ->
+        ElixirMake.Compile.compile(args)
 
-      load_path =
-        case :os.type() do
-          {:win32, _} -> Path.join([priv_dir, "#{nif_filename}.dll"])
-          _ -> Path.join([priv_dir, "#{nif_filename}.so"])
+      force_build == true ->
+        Mix.Tasks.ElixirMake.Precompile.build_native(args)
+
+      true ->
+        nif_filename = config[:make_nif_filename] || "#{app}"
+        priv_dir = ElixirMake.Artefact.app_priv(app)
+
+        load_path =
+          case :os.type() do
+            {:win32, _} -> Path.join([priv_dir, "#{nif_filename}.dll"])
+            _ -> Path.join([priv_dir, "#{nif_filename}.so"])
+          end
+
+        with false <- File.exists?(load_path),
+             {:error, precomp_error} <-
+               Mix.Tasks.ElixirMake.Precompile.download_or_reuse_nif_file() do
+          message = """
+          Error while downloading precompiled NIF: #{precomp_error}.
+          You can force the project to build from scratch with:
+
+              mix elixir_make.precompile
+          """
+
+          Mix.raise(message)
+        else
+          _ -> {:ok, []}
         end
-
-      with {:skip_if_exists, false} <- {:skip_if_exists, File.exists?(load_path)},
-           {:error, precomp_error} <-
-             Mix.Tasks.ElixirMake.Precompile.download_or_reuse_nif_file(context) do
-        message = """
-        Error while downloading precompiled NIF: #{precomp_error}.
-        You can force the project to build from scratch with:
-            mix elixir_make.precompile
-        """
-
-        Mix.raise(message)
-        :error
-      else
-        _ -> @return
-      end
-    end
-  end
-
-  defp precompiler_context(args, module) do
-    module = Module.concat([Mix.Tasks.ElixirMake, module])
-
-    if Code.ensure_loaded?(module) do
-      Kernel.apply(module, :precompiler_context, [args])
-    else
-      Mix.raise("requested precompiler module `#{inspect(module)}` is not loaded")
     end
   end
 

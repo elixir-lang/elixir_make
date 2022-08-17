@@ -27,7 +27,6 @@ compilers: [:elixir_make] ++ Mix.compilers,
 
 And that's it. The command above will invoke `make` for Unix, `nmake` for Windows and `gmake` for FreeBSD and OpenBSD. A "Makefile" file is expected at your project root for Unix systems and "Makefile.win" for Windows systems. Run `mix help compile.elixir_make` for more information and options.
 
-
 ## Publishing a package to Hex.pm
 
 When publishing a package to Hex.pm using `elixir_make` requires you to add

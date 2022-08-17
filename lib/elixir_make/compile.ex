@@ -46,8 +46,6 @@ defmodule ElixirMake.Compile do
   """
   def windows_error_msg, do: @windows_error_msg
 
-  @return if Version.match?(System.version(), "~> 1.9"), do: {:ok, []}, else: :ok
-
   @spec compile(OptionParser.argv()) :: :ok | {:ok, []} | no_return
   def compile(args) do
     config = Mix.Project.config()
@@ -64,7 +62,7 @@ defmodule ElixirMake.Compile do
       Mix.Project.build_structure()
     end
 
-    @return
+    {:ok, []}
   end
 
   def build(config, task_args) do

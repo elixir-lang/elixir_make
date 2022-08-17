@@ -1,13 +1,13 @@
 defmodule ElixirMake.Mixfile do
   use Mix.Project
 
-  @version "0.6.3"
+  @version "0.7.0-dev"
 
   def project do
     [
       app: :elixir_make,
       version: @version,
-      elixir: "~> 1.3",
+      elixir: "~> 1.9",
       description: "A Make compiler for Mix",
       package: package(),
       docs: docs(),
@@ -21,7 +21,7 @@ defmodule ElixirMake.Mixfile do
 
   defp deps do
     [
-      {:castore, "~> 0.1", runtime: false},
+      {:castore, "~> 0.1", optional: true},
       {:ex_doc, "~> 0.20", only: :docs}
     ]
   end
@@ -37,6 +37,7 @@ defmodule ElixirMake.Mixfile do
   defp docs do
     [
       main: "Mix.Tasks.Compile.ElixirMake",
+      extras: ["PRECOMPILATION_GUIDE.md", "CHANGELOG.md"],
       source_ref: "v#{@version}",
       source_url: "https://github.com/elixir-lang/elixir_make"
     ]
