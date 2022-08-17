@@ -164,6 +164,7 @@ defmodule ElixirMake.Artefact do
     end
 
     # https://erlef.github.io/security-wg/secure_coding_and_deployment_hardening/inets
+    # TODO: This may no longer be necessary from Erlang/OTP 26.0 or later.
     cacertfile = CAStore.file_path() |> String.to_charlist()
 
     http_options = [
