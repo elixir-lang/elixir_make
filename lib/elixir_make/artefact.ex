@@ -267,8 +267,8 @@ defmodule ElixirMake.Artefact do
   @spec archive_download_url(String.t() | [String.t()]) :: String.t() | [String.t()]
   def archive_download_url(target) when is_binary(target) do
     url_template =
-      Mix.Project.config()[:make_precompiler_url] ||
-        Mix.raise("`make_precompiler_url` is not specified in `project`")
+      Mix.Project.config()[:make_precompiled_url] ||
+        Mix.raise("`make_precompiled_url` is not specified in `project`")
     app = Mix.Project.config()[:app]
     version = Mix.Project.config()[:version]
     nif_version = ElixirMake.Compile.current_nif_version()
@@ -278,8 +278,8 @@ defmodule ElixirMake.Artefact do
 
   def archive_download_url(targets) when is_list(targets) do
     url_template =
-      Mix.Project.config()[:make_precompiler_url] ||
-        Mix.raise("`make_precompiler_url` is not specified in `project`")
+      Mix.Project.config()[:make_precompiled_url] ||
+        Mix.raise("`make_precompiled_url` is not specified in `project`")
 
     app = Mix.Project.config()[:app]
     version = Mix.Project.config()[:version]
