@@ -45,7 +45,9 @@ defmodule ElixirMake.Artefact do
     ignore_unavailable? = Keyword.get(options, :ignore_unavailable, false)
 
     tasks =
-      Task.async_stream(urls, fn url -> {url, download_nif_artifact(url)} end, timeout: :infinity)
+      Task.async_stream(urls, fn {_target, url} -> {url, download_nif_artifact(url)} end,
+        timeout: :infinity
+      )
 
     cache_dir = ElixirMake.Artefact.cache_dir()
 
