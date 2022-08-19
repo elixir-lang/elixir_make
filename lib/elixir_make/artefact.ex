@@ -167,18 +167,24 @@ defmodule ElixirMake.Artefact do
 
     # https://erlef.github.io/security-wg/secure_coding_and_deployment_hardening/inets
     # TODO: This may no longer be necessary from Erlang/OTP 26.0 or later.
-    cacertfile = CAStore.file_path() |> String.to_charlist()
 
-    http_options = [
-      ssl: [
-        verify: :verify_peer,
-        cacertfile: cacertfile,
-        depth: 2,
-        customize_hostname_check: [
-          match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+    http_options =
+      if Code.ensure_loaded?(CAStore) do
+        cacertfile = CAStore.file_path() |> String.to_charlist()
+
+        [
+          ssl: [
+            verify: :verify_peer,
+            cacertfile: cacertfile,
+            depth: 2,
+            customize_hostname_check: [
+              match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+            ]
+          ]
         ]
-      ]
-    ]
+      else
+        []
+      end
 
     options = [body_format: :binary]
 
