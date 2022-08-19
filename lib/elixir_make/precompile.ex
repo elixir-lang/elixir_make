@@ -56,36 +56,6 @@ defmodule ElixirMake.Precompiler do
   @callback precompile(OptionParser.argv(), [target]) :: {:ok, [precompiled_artefact]}
 
   @doc """
-  This callback will be invoked when the NIF library is trying to load functions
-  from its shared library.
-
-  The precompiler should download or reuse nif file for current target.
-  """
-  @callback download_or_reuse_nif_file() :: :ok | {:error, String.t()}
-
-  @doc """
-  This callback will be invoked when the user executes the following commands:
-
-  - `mix elixir_make.fetch --all`
-  - `mix elixir_make.fetch --all --print`
-
-  The precompiler module should return all available URLs to precompiled artefacts
-  of the NIF library.
-  """
-  @callback available_nif_urls() :: [String.t()]
-
-  @doc """
-  This callback will be invoked when the user executes the following commands:
-
-  - `mix elixir_make.fetch --only-local`
-  - `mix elixir_make.fetch --only-local --print`
-
-  The precompiler module should return the URL to a precompiled artefact of
-  the NIF library for current target (the "native" host).
-  """
-  @callback current_target_nif_url() :: String.t()
-
-  @doc """
   Optional post actions to run after all precompilation tasks are done.
 
   It will only be called at the end of the `mix elixir_make.precompile` command.

@@ -264,6 +264,37 @@ defmodule ElixirMake.Artefact do
     "#{app}-nif-#{nif_version}-#{target}-#{version}.tar.gz"
   end
 
+  @spec archive_download_url(String.t() | [String.t()]) :: String.t() | [String.t()]
+  def archive_download_url(target) when is_binary(target) do
+    url_template =
+      Mix.Project.config()[:make_precompiler_url] ||
+        Mix.raise("`make_precompiler_url` is not specified in `project`")
+    app = Mix.Project.config()[:app]
+    version = Mix.Project.config()[:version]
+    nif_version = ElixirMake.Compile.current_nif_version()
+
+    do_archive_download_url(app, version, nif_version, target, url_template)
+  end
+
+  def archive_download_url(targets) when is_list(targets) do
+    url_template =
+      Mix.Project.config()[:make_precompiler_url] ||
+        Mix.raise("`make_precompiler_url` is not specified in `project`")
+
+    app = Mix.Project.config()[:app]
+    version = Mix.Project.config()[:version]
+    nif_version = ElixirMake.Compile.current_nif_version()
+
+    Enum.map(targets, fn target ->
+      do_archive_download_url(app, version, nif_version, target, url_template)
+    end)
+  end
+
+  defp do_archive_download_url(app, version, nif_version, target, url_template) do
+    archive_filename = archive_filename(app, version, nif_version, target)
+    {target, String.replace(url_template, "@{artefact_filename}", archive_filename)}
+  end
+
   defp build_file_list_at(dir) do
     saved_cwd = File.cwd!()
     File.cd!(dir)
