@@ -9,9 +9,34 @@ defmodule ElixirMake.Precompiler do
   @type target :: String.t()
 
   @doc """
-  This callback should return a list of triplets ("arch-os-abi") for all supported targets.
+  This callback should return a list of triplets ("arch-os-abi") for all supported targets
+  of the given operation.
+
+  For the `:compile` operation, `all_supported_targets` should return a list of targets that
+  the current host is capable of (cross-)compiling to.
+
+  For the `:fetch` operation, `all_supported_targets` should return the full list of targets.
+
+  For example, GitHub Actions provides Linux, macOS and Windows CI hosts, when `operation` is
+  `:compile`, the precompiler might return `["x86_64-linux-gnu"]` if it is running in the Linux
+  CI environment, while returning `["x86_64-apple-darwin", "aarch64-apple-darwin"]` on macOS,
+  or `["amd64-windows", "x86-windows"]` on Windows platform.
+
+  When `operation` is `:fetch`, the precompiler should return the full list. The full list for
+  the above example should be:
+
+    [
+      "x86_64-linux-gnu",
+      "x86_64-apple-darwin",
+      "aarch64-apple-darwin",
+      "amd64-windows",
+      "x86-windows"
+    ]
+
+  This allows the precompiler to do the compilation work in multilple hosts and gather all the
+  artefacts later with `mix elixir_make.fetch --all`.
   """
-  @callback all_supported_targets() :: [target]
+  @callback all_supported_targets(operation :: :compile | :fetch) :: [target]
 
   @doc """
   This callback should return the target triplet for current node.

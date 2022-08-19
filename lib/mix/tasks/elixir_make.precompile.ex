@@ -12,7 +12,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
 
   def run(args) do
     module = ensure_precompiler_module!(Mix.Project.config()[:make_precompiler])
-    {:ok, _precompiled_artifacts} = module.precompile(args, module.all_supported_targets())
+    {:ok, _precompiled_artifacts} = module.precompile(args, module.all_supported_targets(:compile))
 
     if function_exported?(module, :post_precompile, 0) do
       module.post_precompile()
@@ -42,7 +42,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   @doc false
   def available_nif_urls() do
     targets =
-      ensure_precompiler_module!(Mix.Project.config()[:make_precompiler]).all_supported_targets()
+      ensure_precompiler_module!(Mix.Project.config()[:make_precompiler]).all_supported_targets(:fetch)
 
     ElixirMake.Artefact.archive_download_url(targets)
   end
