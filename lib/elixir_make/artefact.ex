@@ -217,11 +217,6 @@ defmodule ElixirMake.Artefact do
     Path.join(File.cwd!(), "checksum-#{to_string(app)}.exs")
   end
 
-  def download_archived_artefact(base_url, tar_filename) do
-    "#{base_url}/#{tar_filename}"
-    |> download_nif_artifact()
-  end
-
   @doc """
   Returns user cache directory.
   """
@@ -269,6 +264,7 @@ defmodule ElixirMake.Artefact do
     url_template =
       Mix.Project.config()[:make_precompiled_url] ||
         Mix.raise("`make_precompiled_url` is not specified in `project`")
+
     app = Mix.Project.config()[:app]
     version = Mix.Project.config()[:version]
     nif_version = ElixirMake.Compile.current_nif_version()
