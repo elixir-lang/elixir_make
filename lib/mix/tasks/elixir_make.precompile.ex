@@ -10,15 +10,61 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   require Logger
   use Mix.Task
 
+  @impl true
   def run(args) do
     module = ensure_precompiler_module!(Mix.Project.config()[:make_precompiler])
-    {:ok, _precompiled_artifacts} = module.precompile(args, module.all_supported_targets(:compile))
+    config = Mix.Project.config()
+    app = config[:app]
+    version = config[:version]
+    nif_version = ElixirMake.Compile.current_nif_version()
+
+    # get precompiler module's specific cache directory if applicable
+    cache_dir =
+      if function_exported?(module, :cache_dir, 0) do
+        module.cache_dir()
+      else
+        ElixirMake.Artefact.cache_dir()
+      end
+
+    targets = module.all_supported_targets(:compile)
+
+    precompiled_artefacts =
+      Enum.reduce(targets, [], fn target, checksums ->
+        {_archive_full_path, archived_filename, checksum_algo, checksum} =
+          with :ok <- module.precompile(args, target) do
+            ElixirMake.Artefact.create_precompiled_archive(
+              app,
+              version,
+              nif_version,
+              target,
+              cache_dir
+            )
+          else
+            {:error, msg} ->
+              Mix.raise(msg)
+          end
+
+        [
+          {target, %{path: archived_filename, checksum_algo: checksum_algo, checksum: checksum}}
+          | checksums
+        ]
+      end)
+
+    ElixirMake.Artefact.write_checksum!(app, precompiled_artefacts)
 
     if function_exported?(module, :post_precompile, 0) do
       module.post_precompile()
     else
       :ok
     end
+
+    with {:ok, target} <- module.current_target() do
+      archived_filename = ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
+      archived_fullpath = Path.join([cache_dir, archived_filename])
+      ElixirMake.Artefact.restore_nif_file(archived_fullpath, app)
+    end
+
+    Mix.Project.build_structure()
   end
 
   defp ensure_precompiler_module!(nil) do
@@ -42,7 +88,9 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   @doc false
   def available_nif_urls() do
     targets =
-      ensure_precompiler_module!(Mix.Project.config()[:make_precompiler]).all_supported_targets(:fetch)
+      ensure_precompiler_module!(Mix.Project.config()[:make_precompiler]).all_supported_targets(
+        :fetch
+      )
 
     ElixirMake.Artefact.archive_download_url(targets)
   end
@@ -55,24 +103,24 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
     app = Mix.Project.config()[:app]
     version = Mix.Project.config()[:version]
     nif_version = ElixirMake.Compile.current_nif_version()
-    tar_filename = ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
+    archived_filename = ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
 
     app_priv = ElixirMake.Artefact.app_priv(app)
-    cached_tar_gz = Path.join([cache_dir, tar_filename])
+    archived_fullpath = Path.join([cache_dir, archived_filename])
 
-    if !File.exists?(cached_tar_gz) do
+    if !File.exists?(archived_fullpath) do
       with :ok <- File.mkdir_p(cache_dir),
-           {:ok, tar_gz} <- ElixirMake.Artefact.download_nif_artifact(url),
-           :ok <- File.write(cached_tar_gz, tar_gz) do
-        Logger.debug("NIF cached at #{cached_tar_gz} and extracted to #{app_priv}")
+           {:ok, archived_data} <- ElixirMake.Artefact.download_nif_artefact(url),
+           :ok <- File.write(archived_fullpath, archived_data) do
+        Logger.debug("NIF cached at #{archived_fullpath} and extracted to #{app_priv}")
       end
     end
 
-    with {:file_exists, true} <- {:file_exists, File.exists?(cached_tar_gz)},
+    with {:file_exists, true} <- {:file_exists, File.exists?(archived_fullpath)},
          {:file_integrity, :ok} <-
-           {:file_integrity, ElixirMake.Artefact.check_file_integrity(cached_tar_gz, app)},
+           {:file_integrity, ElixirMake.Artefact.check_file_integrity(archived_fullpath, app)},
          {:restore_nif, :ok} <-
-           {:restore_nif, ElixirMake.Artefact.restore_nif_file(cached_tar_gz, app)} do
+           {:restore_nif, ElixirMake.Artefact.restore_nif_file(archived_fullpath, app)} do
       :ok
     else
       # of course you can choose to build from scratch instead of letting elixir_make

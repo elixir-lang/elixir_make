@@ -53,32 +53,20 @@ defmodule ElixirMake.Precompiler do
   """
   @callback build_native(OptionParser.argv()) :: :ok | {:ok, []} | no_return
 
-  @typedoc """
-  A map that contains detailed info of a precompiled artefact.
+  @doc """
+  This optional callback should return the precompiler's specific cache directory.
 
-  - `:path`, path to the archived build artefact.
-  - `:checksum_algo`, name of the checksum algorithm.
-  - `:checksum`, the checksum of the archived build artefact using `:checksum_algo`.
+  If not implemented, `ElixirMake.Artefact.cache_dir()` will be used as the default value.
+
   """
-  @type precompiled_artefact_detail :: %{
-          :path => String.t(),
-          :checksum => String.t(),
-          :checksum_algo => atom
-        }
-
-  @typedoc """
-  A tuple that indicates the target and the corresponding precompiled artefact detail info.
-
-  `{target, precompiled_artefact_detail}`.
-  """
-  @type precompiled_artefact :: {target, precompiled_artefact_detail}
+  @callback cache_dir() :: String.t()
 
   @doc """
   This callback should precompile the library to the given target(s).
 
-  Returns a list of `{target, archived_artefacts}` if successfully compiled.
+  Returns `:ok` if the requested target has successfully compiled.
   """
-  @callback precompile(OptionParser.argv(), [target]) :: {:ok, [precompiled_artefact]}
+  @callback precompile(OptionParser.argv(), target) :: :ok | {:error, String.t()} | no_return
 
   @doc """
   Optional post actions to run after all precompilation tasks are done.
@@ -89,5 +77,5 @@ defmodule ElixirMake.Precompiler do
   """
   @callback post_precompile() :: :ok
 
-  @optional_callbacks post_precompile: 0
+  @optional_callbacks post_precompile: 0, cache_dir: 0
 end

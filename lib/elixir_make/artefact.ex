@@ -41,11 +41,11 @@ defmodule ElixirMake.Artefact do
   # Download a list of files from URLs and calculate its checksum.
   # Returns a list with details of the download and the checksum of each file.
   @doc false
-  def download_nif_artifacts_with_checksums!(urls, options \\ []) do
+  def download_nif_artefacts_with_checksums!(urls, options \\ []) do
     ignore_unavailable? = Keyword.get(options, :ignore_unavailable, false)
 
     tasks =
-      Task.async_stream(urls, fn {_target, url} -> {url, download_nif_artifact(url)} end,
+      Task.async_stream(urls, fn {_target, url} -> {url, download_nif_artefact(url)} end,
         timeout: :infinity
       )
 
@@ -145,7 +145,7 @@ defmodule ElixirMake.Artefact do
     end
   end
 
-  def download_nif_artifact(url) do
+  def download_nif_artefact(url) do
     url = String.to_charlist(url)
     Logger.debug("Downloading NIF from #{url}")
 
@@ -246,8 +246,8 @@ defmodule ElixirMake.Artefact do
     app_priv = app_priv(app)
     File.cd!(app_priv)
 
-    archive_tar_gz = archive_filename(app, version, nif_version, target)
-    archive_full_path = Path.expand(Path.join([cache_dir, archive_tar_gz]))
+    archived_filename = archive_filename(app, version, nif_version, target)
+    archive_full_path = Path.expand(Path.join([cache_dir, archived_filename]))
     File.mkdir_p!(cache_dir)
     Logger.debug("Creating precompiled archive: #{archive_full_path}")
 
@@ -260,7 +260,7 @@ defmodule ElixirMake.Artefact do
     {:ok, algo, checksum} =
       ElixirMake.Artefact.compute_checksum(archive_full_path, ElixirMake.Artefact.checksum_algo())
 
-    {archive_full_path, archive_tar_gz, algo, checksum}
+    {archive_full_path, archived_filename, algo, checksum}
   end
 
   def archive_filename(app, version, nif_version, target) do
@@ -374,9 +374,9 @@ defmodule ElixirMake.Artefact do
     File.mkdir_p!(app_priv(app))
   end
 
-  def restore_nif_file(cached_tar_gz, app) do
-    Logger.debug("Restore NIF for current node from: #{cached_tar_gz}")
-    :erl_tar.extract(cached_tar_gz, [:compressed, {:cwd, to_string(app_priv(app))}])
+  def restore_nif_file(cached_archive, app) do
+    Logger.debug("Restore NIF for current node from: #{cached_archive}")
+    :erl_tar.extract(cached_archive, [:compressed, {:cwd, to_string(app_priv(app))}])
   end
 
   defp read_map_from_file(file) do

@@ -58,6 +58,9 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
     * `:make_precompiler` - the precompiled module to use. Defaults to none.
 
+    * `:make_precompiled_url` - the download URL template. Defaults to none.
+      Required when `make_precompiler` is set.
+
     * `:make_nif_filename` - the filename of the compiled NIF without extension.
       Defaults to the app name.
 
