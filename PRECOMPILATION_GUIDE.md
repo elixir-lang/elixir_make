@@ -431,35 +431,59 @@ defmodule CCPrecompiler do
     #   and because this precompiler module is designed for NIF
     #   libraries that use C/C++ as the main language with Makefile,
     #   we can just call `ElixirMake.Compile.compile(args)`
+    #
+    # it's also possible to forward this call to:
+    #
+    #   `precompile(args, elem(current_target(), 1))`
+    #
+    #   this could be useful when the precompiler is using a universal
+    #   (cross-)compiler, say zig. in this way, the compiled binaries
+    #   (`mix compile`) will be consistent as the corrsponding precompiled
+    #   one (with `mix elixir_make.precompile`)
+    #
+    #   however, if you'd prefer to having the same behaviour for `mix compile`
+    #   then the following line is okay
     ElixirMake.Compile.compile(args)
   end
 
   @impl ElixirMake.Precompiler
-  def precompile(args, targets) do
-    # in this callback we compile the NIF library for each target given
-    #   in the list `targets`
-    # it's worth noting that the targets in the list could be a subset
-    #   of all supported targets because it's possible that `elixir_make`
-    #   would allow user to set a filter to keep targets they want in the
-    #   future.
-    saved_cwd = File.cwd!()
-    cache_dir = ElixirMake.Artefact.cache_dir()
+  def cache_dir() do
+    # in this optional callback we can return a custom cache directory
+    #   for this precompiler module, this can be useful
+    #   - if you'd prefer to save artefacts in some global location
+    #   - if you'd like to having a user customisable option such as
+    #     `cc_precompiler_cache_dir`
+    ElixirMake.Artefact.cache_dir()
+  end
 
+  @impl ElixirMake.Precompiler
+  def precompile(args, target) do
+    # in this callback we compile the NIF library for the requested target
+    saved_cwd = File.cwd!()
     app = Mix.Project.config()[:app]
     version = Mix.Project.config()[:version]
     nif_version = ElixirMake.Compile.current_nif_version()
 
-    precompiled_artefacts =
-      do_precompile(app, version, nif_version, args, targets, saved_cwd, cache_dir)
+    saved_cc = System.get_env("CC") || ""
+    saved_cxx = System.get_env("CXX") || ""
+    saved_cpp = System.get_env("CPP") || ""
 
-    with {:ok, target} <- current_target() do
-      tar_filename = ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
-      cached_tar_gz = Path.join([cache_dir, tar_filename])
-      ElixirMake.Artefact.restore_nif_file(cached_tar_gz, app)
-    end
+    Logger.debug("Current compiling target: #{target}")
+    ElixirMake.Artefact.make_priv_dir(app, :clean)
 
-    Mix.Project.build_structure()
-    {:ok, precompiled_artefacts}
+    {cc, cxx} = get_cc_and_cxx(target)
+    System.put_env("CC", cc)
+    System.put_env("CXX", cxx)
+    System.put_env("CPP", cxx)
+
+    ElixirMake.Compile.compile(args)
+    
+    File.cd!(saved_cwd)
+    System.put_env("CC", saved_cc)
+    System.put_env("CXX", saved_cxx)
+    System.put_env("CPP", saved_cpp)
+
+    :ok
   end
 
   defp get_cc_and_cxx(triplet, default \\ {"gcc", "g++"}) do
@@ -469,46 +493,6 @@ defmodule CCPrecompiler do
       {cc, cxx, cc_args, cxx_args} ->
         {"#{cc} #{cc_args}", "#{cxx} #{cxx_args}"}
     end
-  end
-
-  defp do_precompile(app, version, nif_version, args, targets, saved_cwd, cache_dir) do
-    saved_cc = System.get_env("CC") || ""
-    saved_cxx = System.get_env("CXX") || ""
-    saved_cpp = System.get_env("CPP") || ""
-
-    precompiled_artefacts =
-      Enum.reduce(targets, [], fn target, checksums ->
-        Logger.debug("Current compiling target: #{target}")
-        ElixirMake.Artefact.make_priv_dir(app, :clean)
-
-        {cc, cxx} = get_cc_and_cxx(target)
-        System.put_env("CC", cc)
-        System.put_env("CXX", cxx)
-        System.put_env("CPP", cxx)
-
-        ElixirMake.Compile.compile(args)
-
-        {_archive_full_path, archive_tar_gz, checksum_algo, checksum} =
-          ElixirMake.Artefact.create_precompiled_archive(
-            app,
-            version,
-            nif_version,
-            target,
-            cache_dir
-          )
-
-        [
-          {target, %{path: archive_tar_gz, checksum_algo: checksum_algo, checksum: checksum}}
-          | checksums
-        ]
-      end)
-    ElixirMake.Artefact.write_checksum!(app, precompiled_artefacts)
-
-    File.cd!(saved_cwd)
-    System.put_env("CC", saved_cc)
-    System.put_env("CXX", saved_cxx)
-    System.put_env("CPP", saved_cpp)
-    precompiled_artefacts
   end
 
   @impl ElixirMake.Precompiler
