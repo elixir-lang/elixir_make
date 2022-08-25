@@ -139,7 +139,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   @doc false
   def current_target_nif_url() do
     module = ensure_precompiler_module!(Mix.Project.config()[:make_precompiler])
-    current_target = module.current_target()
+    {:ok, current_target} = module.current_target()
 
     current =
       Enum.reject(available_nif_urls(), fn {target, _url} ->
