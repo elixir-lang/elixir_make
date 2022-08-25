@@ -137,7 +137,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
         with false <- File.exists?(load_path),
              {:error, precomp_error} <-
-               Mix.Tasks.ElixirMake.Precompile.download_or_reuse_nif_file() do
+               Mix.Tasks.ElixirMake.Precompile.download_or_reuse_nif_file(args) do
           message = """
           Error while downloading precompiled NIF: #{precomp_error}.
           You can force the project to build from scratch with:

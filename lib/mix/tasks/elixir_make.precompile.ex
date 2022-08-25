@@ -96,43 +96,47 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   end
 
   @doc false
-  def download_or_reuse_nif_file() do
-    {target, url} = current_target_nif_url()
-    cache_dir = ElixirMake.Artefact.cache_dir()
+  def download_or_reuse_nif_file(args) do
+    with {target, url} <- current_target_nif_url() do
+      cache_dir = ElixirMake.Artefact.cache_dir()
 
-    app = Mix.Project.config()[:app]
-    version = Mix.Project.config()[:version]
-    nif_version = ElixirMake.Compile.current_nif_version()
-    archived_filename = ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
+      app = Mix.Project.config()[:app]
+      version = Mix.Project.config()[:version]
+      nif_version = ElixirMake.Compile.current_nif_version()
+      archived_filename = ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
 
-    app_priv = ElixirMake.Artefact.app_priv(app)
-    archived_fullpath = Path.join([cache_dir, archived_filename])
+      app_priv = ElixirMake.Artefact.app_priv(app)
+      archived_fullpath = Path.join([cache_dir, archived_filename])
 
-    if !File.exists?(archived_fullpath) do
-      with :ok <- File.mkdir_p(cache_dir),
-           {:ok, archived_data} <- ElixirMake.Artefact.download_nif_artefact(url),
-           :ok <- File.write(archived_fullpath, archived_data) do
-        Logger.debug("NIF cached at #{archived_fullpath} and extracted to #{app_priv}")
+      if !File.exists?(archived_fullpath) do
+        with :ok <- File.mkdir_p(cache_dir),
+            {:ok, archived_data} <- ElixirMake.Artefact.download_nif_artefact(url),
+            :ok <- File.write(archived_fullpath, archived_data) do
+          Logger.debug("NIF cached at #{archived_fullpath} and extracted to #{app_priv}")
+        end
       end
-    end
 
-    with {:file_exists, true} <- {:file_exists, File.exists?(archived_fullpath)},
-         {:file_integrity, :ok} <-
-           {:file_integrity, ElixirMake.Artefact.check_file_integrity(archived_fullpath, app)},
-         {:restore_nif, :ok} <-
-           {:restore_nif, ElixirMake.Artefact.restore_nif_file(archived_fullpath, app)} do
-      :ok
+      with {:file_exists, true} <- {:file_exists, File.exists?(archived_fullpath)},
+          {:file_integrity, :ok} <-
+            {:file_integrity, ElixirMake.Artefact.check_file_integrity(archived_fullpath, app)},
+          {:restore_nif, :ok} <-
+            {:restore_nif, ElixirMake.Artefact.restore_nif_file(archived_fullpath, app)} do
+        :ok
+      else
+        # of course you can choose to build from scratch instead of letting elixir_make
+        # to raise an error
+        {:file_exists, false} ->
+          {:error, "Cache file not exists or cannot download"}
+
+        {:file_integrity, _} ->
+          {:error, "Cache file integrity check failed"}
+
+        {:restore_nif, status} ->
+          {:error, "Cannot restore nif from cache: #{inspect(status)}"}
+      end
     else
-      # of course you can choose to build from scratch instead of letting elixir_make
-      # to raise an error
-      {:file_exists, false} ->
-        {:error, "Cache file not exists or cannot download"}
-
-      {:file_integrity, _} ->
-        {:error, "Cache file integrity check failed"}
-
-      {:restore_nif, status} ->
-        {:error, "Cannot restore nif from cache: #{inspect(status)}"}
+      :build_from_source ->
+        build_native(args)
     end
   end
 
@@ -155,9 +159,11 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
         [] ->
           available_targets = Enum.map(available_urls, fn {target, _url} -> target end)
 
-          Mix.raise(
-            "Cannot find download url for current target `#{inspect(current_target)}`, available targets are: #{inspect(available_targets)}"
+          Logger.warning(
+            "Cannot find download url for current target `#{inspect(current_target)}`, will try to build from source. Available targets are: #{inspect(available_targets)}"
           )
+
+          :build_from_source
       end
     else
       {:error, msg} -> Mix.raise(msg)
