@@ -110,17 +110,17 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
 
       if !File.exists?(archived_fullpath) do
         with :ok <- File.mkdir_p(cache_dir),
-            {:ok, archived_data} <- ElixirMake.Artefact.download_nif_artefact(url),
-            :ok <- File.write(archived_fullpath, archived_data) do
+             {:ok, archived_data} <- ElixirMake.Artefact.download_nif_artefact(url),
+             :ok <- File.write(archived_fullpath, archived_data) do
           Logger.debug("NIF cached at #{archived_fullpath} and extracted to #{app_priv}")
         end
       end
 
       with {:file_exists, true} <- {:file_exists, File.exists?(archived_fullpath)},
-          {:file_integrity, :ok} <-
-            {:file_integrity, ElixirMake.Artefact.check_file_integrity(archived_fullpath, app)},
-          {:restore_nif, :ok} <-
-            {:restore_nif, ElixirMake.Artefact.restore_nif_file(archived_fullpath, app)} do
+           {:file_integrity, :ok} <-
+             {:file_integrity, ElixirMake.Artefact.check_file_integrity(archived_fullpath, app)},
+           {:restore_nif, :ok} <-
+             {:restore_nif, ElixirMake.Artefact.restore_nif_file(archived_fullpath, app)} do
         :ok
       else
         # of course you can choose to build from scratch instead of letting elixir_make
