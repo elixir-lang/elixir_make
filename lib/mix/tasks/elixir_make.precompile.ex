@@ -166,7 +166,9 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
           :build_from_source
       end
     else
-      {:error, msg} -> Mix.raise(msg)
+      {:error, msg} ->
+        Logger.error(msg)
+        :build_from_source
     end
   end
 end
