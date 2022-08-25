@@ -139,19 +139,28 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   @doc false
   def current_target_nif_url() do
     module = ensure_precompiler_module!(Mix.Project.config()[:make_precompiler])
-    {:ok, current_target} = module.current_target()
 
-    current =
-      Enum.reject(available_nif_urls(), fn {target, _url} ->
-        target != current_target
-      end)
+    with {:ok, current_target} <- module.current_target() do
+      available_urls = available_nif_urls()
 
-    case current do
-      [{^current_target, download_url}] ->
-        {current_target, download_url}
+      current =
+        Enum.reject(available_urls, fn {target, _url} ->
+          target != current_target
+        end)
 
-      [] ->
-        Mix.raise("Cannot find download url for current target `#{current_target}`")
+      case current do
+        [{^current_target, download_url}] ->
+          {current_target, download_url}
+
+        [] ->
+          available_targets = Enum.map(available_urls, fn {target, _url} -> target end)
+
+          Mix.raise(
+            "Cannot find download url for current target `#{inspect(current_target)}`, available targets are: #{inspect(available_targets)}"
+          )
+      end
+    else
+      {:error, msg} -> Mix.raise(msg)
     end
   end
 end
