@@ -149,7 +149,7 @@ defmodule ElixirMake.Artefact do
   # https://github.com/elixir-cldr/cldr_utils/blob/master/lib/cldr/http/http.ex
   @certificate_locations [
                            # Configured cacertfile
-                           Application.compile_env(:elixir_make, :cacertfile),
+                           System.get_env("ELIXIR_MAKE_CACERT"),
 
                            # Populated if hex package CAStore is configured
                            if(Code.ensure_loaded?(CAStore), do: CAStore.file_path()),
