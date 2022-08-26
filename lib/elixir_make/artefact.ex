@@ -300,7 +300,7 @@ defmodule ElixirMake.Artefact do
   end
 
   def download_nif_artefact(url) do
-    url = String.to_charlist(url)
+    url_charlist = String.to_charlist(url)
     Logger.debug("Downloading NIF from #{url}")
 
     {:ok, _} = Application.ensure_all_started(:inets)
@@ -321,11 +321,11 @@ defmodule ElixirMake.Artefact do
 
     # https://erlef.github.io/security-wg/secure_coding_and_deployment_hardening/inets
     # TODO: This may no longer be necessary from Erlang/OTP 26.0 or later.
-    http_options = https_opts(URI.parse(url).host)
+    http_options = https_opts(String.to_charlist(URI.parse(url).host))
 
     options = [body_format: :binary]
 
-    case :httpc.request(:get, {url, []}, http_options, options) do
+    case :httpc.request(:get, {url_charlist, []}, http_options, options) do
       {:ok, {{_, 200, _}, _headers, body}} ->
         {:ok, body}
 
