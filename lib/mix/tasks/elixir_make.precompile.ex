@@ -14,15 +14,15 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   @impl true
   def run(args) do
     config = Mix.Project.config()
-
-    precompiler =
-      Mix.Project.config()[:precompiler] ||
-        raise(":make_precompiler project configuration is required when using elixir_make.precompile")
-
     app = config[:app]
     version = config[:version]
-
     nif_version = Precompiler.current_nif_version()
+
+    precompiler =
+      config[:precompiler] ||
+        Mix.raise(
+          ":make_precompiler project configuration is required when using elixir_make.precompile"
+        )
 
     cache_dir =
       if function_exported?(precompiler, :cache_dir, 0) do

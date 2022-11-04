@@ -211,8 +211,8 @@ defmodule Mix.Tasks.Compile.ElixirMake do
         end
 
       {:error, msg} ->
-        Mix.shell.error(msg)
-        Mix.shell.info("Attempting to build from scratch...")
+        Mix.shell().error(msg)
+        Mix.shell().info("Attempting to build from scratch...")
         precompiler.build_native(args)
     end
   end

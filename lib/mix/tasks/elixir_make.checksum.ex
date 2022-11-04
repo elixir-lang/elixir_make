@@ -32,8 +32,10 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
     config = Mix.Project.config()
 
     precompiler =
-      Mix.Project.config()[:precompiler] ||
-        raise(":make_precompiler project configuration is required when using elixir_make.checksum")
+      config[:precompiler] ||
+        Mix.raise(
+          ":make_precompiler project configuration is required when using elixir_make.checksum"
+        )
 
     {options, _args} = OptionParser.parse!(flags, strict: @switches)
 
