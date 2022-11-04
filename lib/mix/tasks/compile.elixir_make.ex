@@ -110,6 +110,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   """
 
   use Mix.Task
+  alias ElixirMake.{Artefact, Precompiler}
 
   def run(args) do
     config = Mix.Project.config()
@@ -120,10 +121,10 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
     cond do
       precompiler == nil ->
-        ElixirMake.Compile.compile(args)
+        ElixirMake.Compiler.compile(args)
 
       force_build == true ->
-        Mix.Tasks.ElixirMake.Precompile.build_native(args)
+        precompiler.build_native(args)
 
       true ->
         nif_filename = config[:make_nif_filename] || "#{app}"
@@ -136,10 +137,10 @@ defmodule Mix.Tasks.Compile.ElixirMake do
           end
 
         with false <- File.exists?(load_path),
-             {:error, precomp_error} <-
-               Mix.Tasks.ElixirMake.Precompile.download_or_reuse_nif_file(args) do
+             {:error, precomp_error} <- download_or_reuse_or_build_nif(precompiler, args) do
           message = """
           Error while downloading precompiled NIF: #{precomp_error}.
+
           You can force the project to build from scratch with:
 
               mix elixir_make.precompile
@@ -161,11 +162,58 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     if clean_targets do
       config
       |> Keyword.put(:make_targets, clean_targets)
-      |> ElixirMake.Compile.build([])
+      |> ElixirMake.Compiler.make([])
     end
   end
 
   defp pre_release?(version) do
     "dev" in Version.parse!(version).pre
+  end
+
+  defp download_or_reuse_or_build_nif(precompiler, args) do
+    case Artefact.current_target_nif_url(precompiler) do
+      {:ok, target, url} ->
+        cache_dir = Precompiler.cache_dir()
+
+        app = Mix.Project.config()[:app]
+        version = Mix.Project.config()[:version]
+        nif_version = Precompiler.current_nif_version()
+        archived_filename = Artefact.archive_filename(app, version, nif_version, target)
+
+        app_priv = Artefact.app_priv(app)
+        archived_fullpath = Path.join([cache_dir, archived_filename])
+
+        with false <- File.exists?(archived_fullpath),
+             :ok <- File.mkdir_p(cache_dir),
+             {:ok, archived_data} <- Artefact.download_nif_artefact(url),
+             :ok <- File.write(archived_fullpath, archived_data) do
+          Mix.shell().info("NIF cached at #{archived_fullpath} and extracted to #{app_priv}")
+        end
+
+        case File.exists?(archived_fullpath) do
+          true ->
+            case Artefact.check_file_integrity(archived_fullpath, app) do
+              :ok ->
+                case Artefact.restore_nif_file(archived_fullpath, app) do
+                  :ok ->
+                    :ok
+
+                  {:error, term} ->
+                    {:error, "cannot restore nif from cache: #{inspect(term)}"}
+                end
+
+              {:error, reason} ->
+                {:error, "cache file integrity check failed: #{reason}"}
+            end
+
+          false ->
+            {:error, "cache file does not exist or cannot download"}
+        end
+
+      {:error, msg} ->
+        Mix.shell.error(msg)
+        Mix.shell.info("Attempting to build from scratch...")
+        precompiler.build_native(args)
+    end
   end
 end

@@ -168,7 +168,7 @@ jobs:
 After CI has finished, you can fetch the precompiled binaries from GitHub.
 
 ```shell
-$ MIX_ENV=prod mix elixir_make.fetch --all --ignore-unavailable
+$ MIX_ENV=prod mix elixir_make.checksum --all --ignore-unavailable
 ```
 
 Meanwhile, a checksum file will be generated. In this example, the checksum file will be named as `checksum-cc_precompiler_example.exs` in current working directory.
@@ -250,11 +250,11 @@ To recap, the suggested flow is the following:
 
   ```shell
   # only fetch artefact for current host
-  MIX_ENV=prod mix elixir_make.fetch --only-local --print
+  MIX_ENV=prod mix elixir_make.checksum --only-local --print
   # fetch all
-  MIX_ENV=prod mix elixir_make.fetch --all --print
+  MIX_ENV=prod mix elixir_make.checksum --all --print
   # to fetch all available artefacts at the moment
-  MIX_ENV=prod mix elixir_make.fetch --all --print --ignore-unavailable
+  MIX_ENV=prod mix elixir_make.checksum --all --print --ignore-unavailable
   ```
 
 6. (Optional) Test if the downloaded artefacts works as expected.
@@ -401,7 +401,7 @@ defmodule CCPrecompiler do
 
   @impl ElixirMake.Precompiler
   def all_supported_targets(:fetch) do
-    List.flatten(Enum.map(@compilers, &Map.keys(elem(&1, 1))))
+    Enum.flat_map(@compilers, &Map.keys(elem(&1, 1)))
   end
 
   defp find_all_available_targets do
@@ -427,58 +427,53 @@ defmodule CCPrecompiler do
 
   @impl ElixirMake.Precompiler
   def build_native(args) do
-    # in this callback we just build the NIF library natively,
-    #   and because this precompiler module is designed for NIF
-    #   libraries that use C/C++ as the main language with Makefile,
-    #   we can just call `ElixirMake.Compile.compile(args)`
+    # In this callback we just build the NIF library natively,
+    # and because this precompiler module is designed for NIF
+    # libraries that use C/C++ as the main language with Makefile,
+    # we can just call `ElixirMake.Precompiler.mix_compile(args)`
     #
-    # it's also possible to forward this call to:
+    # It's also possible to forward this call to:
     #
     #   `precompile(args, elem(current_target(), 1))`
     #
-    #   this could be useful when the precompiler is using a universal
-    #   (cross-)compiler, say zig. in this way, the compiled binaries
-    #   (`mix compile`) will be consistent as the corrsponding precompiled
-    #   one (with `mix elixir_make.precompile`)
+    # This could be useful when the precompiler is using a universal
+    # (cross-)compiler, say zig. in this way, the compiled binaries
+    # (`mix compile`) will be consistent as the corrsponding precompiled
+    # one (with `mix elixir_make.precompile`)
     #
-    #   however, if you'd prefer to having the same behaviour for `mix compile`
-    #   then the following line is okay
-    ElixirMake.Compile.compile(args)
+    # However, if you'd prefer to having the same behaviour for `mix compile`
+    # then the following line is okay
+    ElixirMake.Precompiler.mix_compile(args)
   end
 
   @impl ElixirMake.Precompiler
   def cache_dir() do
     # in this optional callback we can return a custom cache directory
-    #   for this precompiler module, this can be useful
+    # for this precompiler module, this can be useful
     #   - if you'd prefer to save artefacts in some global location
     #   - if you'd like to having a user customisable option such as
     #     `cc_precompiler_cache_dir`
-    ElixirMake.Artefact.cache_dir()
+    ElixirMake.Precompiler.cache_dir()
   end
 
   @impl ElixirMake.Precompiler
   def precompile(args, target) do
-    # in this callback we compile the NIF library for the requested target
-    saved_cwd = File.cwd!()
-    app = Mix.Project.config()[:app]
-    version = Mix.Project.config()[:version]
-    nif_version = ElixirMake.Compile.current_nif_version()
+    # Potentially clean the output directory to avoid conflicts
+    File.rm!(Path.join(Mix.Project.app_path(), "priv"))
 
     saved_cc = System.get_env("CC") || ""
     saved_cxx = System.get_env("CXX") || ""
     saved_cpp = System.get_env("CPP") || ""
 
     Logger.debug("Current compiling target: #{target}")
-    ElixirMake.Artefact.make_priv_dir(app, :clean)
 
     {cc, cxx} = get_cc_and_cxx(target)
     System.put_env("CC", cc)
     System.put_env("CXX", cxx)
     System.put_env("CPP", cxx)
 
-    ElixirMake.Compile.compile(args)
-    
-    File.cd!(saved_cwd)
+    ElixirMake.Precompiler.compile(args)
+
     System.put_env("CC", saved_cc)
     System.put_env("CXX", saved_cxx)
     System.put_env("CPP", saved_cpp)
@@ -503,8 +498,8 @@ defmodule CCPrecompiler do
   defp write_metadata_to_file() do
     app = Mix.Project.config()[:app]
     version = Mix.Project.config()[:version]
-    nif_version = ElixirMake.Compile.current_nif_version()
-    cache_dir = ElixirMake.Artefact.cache_dir()
+    nif_version = ElixirMake.Precompiler.current_nif_version()
+    cache_dir = ElixirMake.Precompiler.cache_dir()
 
     with {:ok, target} <- current_target() do
       archived_artefact_file =

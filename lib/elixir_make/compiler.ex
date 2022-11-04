@@ -1,10 +1,11 @@
-defmodule ElixirMake.Compile do
+defmodule ElixirMake.Compiler do
+  @moduledoc false
+
   @mac_error_msg """
   You need to have gcc and make installed. Try running the
   commands "gcc --version" and / or "make --version". If these programs
   are not installed, you will be prompted to install them.
   """
-  def mac_error_msg, do: @mac_error_msg
 
   @unix_error_msg """
   You need to have gcc and make installed. If you are using
@@ -13,7 +14,6 @@ defmodule ElixirMake.Compile do
   included in your Erlang/OTP version. If you're on Fedora, run
   "dnf group install 'Development Tools'".
   """
-  def unix_error_msg, do: @unix_error_msg
 
   @windows_error_msg ~S"""
   One option is to install a recent version of
@@ -44,15 +44,13 @@ defmodule ElixirMake.Compile do
 
   This will give you a compilation suite nearly compatible with Unix' standard tools.
   """
-  def windows_error_msg, do: @windows_error_msg
 
-  @spec compile(OptionParser.argv()) :: :ok | {:ok, []} | no_return
   def compile(args) do
     config = Mix.Project.config()
     Mix.shell().print_app()
     priv? = File.dir?("priv")
     Mix.Project.ensure_structure()
-    build(config, args)
+    make(config, args)
 
     # IF there was no priv before and now there is one, we assume
     # the user wants to copy it. If priv already existed and was
@@ -65,7 +63,7 @@ defmodule ElixirMake.Compile do
     {:ok, []}
   end
 
-  def build(config, task_args) do
+  def make(config, task_args) do
     exec =
       System.get_env("MAKE") ||
         os_specific_executable(Keyword.get(config, :make_executable, :default))
@@ -228,9 +226,5 @@ defmodule ElixirMake.Compile do
 
   defp env(var, default) do
     System.get_env(var) || default
-  end
-
-  def current_nif_version do
-    :erlang.system_info(:nif_version) |> List.to_string()
   end
 end

@@ -11,12 +11,13 @@ defmodule ElixirMake.Mixfile do
       description: "A Make compiler for Mix",
       package: package(),
       docs: docs(),
-      deps: deps()
+      deps: deps(),
+      xref: [exclude: [:crypto, :ssl, :public_key, :httpc]]
     ]
   end
 
   def application do
-    [extra_applications: [:logger, :crypto, :inets, :public_key, :ssl]]
+    [extra_applications: [:logger]]
   end
 
   defp deps do

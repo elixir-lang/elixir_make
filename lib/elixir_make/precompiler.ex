@@ -34,7 +34,7 @@ defmodule ElixirMake.Precompiler do
     ]
 
   This allows the precompiler to do the compilation work in multilple hosts and gather all the
-  artefacts later with `mix elixir_make.fetch --all`.
+  artefacts later with `mix elixir_make.checksum --all`.
   """
   @callback all_supported_targets(operation :: :compile | :fetch) :: [target]
 
@@ -78,4 +78,29 @@ defmodule ElixirMake.Precompiler do
   @callback post_precompile() :: :ok
 
   @optional_callbacks post_precompile: 0, cache_dir: 0
+
+  @doc """
+  Returns user cache directory.
+  """
+  def cache_dir(sub_dir \\ "") do
+    cache_opts = if System.get_env("MIX_XDG"), do: %{os: :linux}, else: %{}
+    cache_dir = :filename.basedir(:user_cache, "", cache_opts)
+    cache_dir = System.get_env("ELIXIR_MAKE_CACHE_DIR", cache_dir) |> Path.join(sub_dir)
+    File.mkdir_p!(cache_dir)
+    cache_dir
+  end
+
+  @doc """
+  Returns the current nif version as a string.
+  """
+  def current_nif_version do
+    :erlang.system_info(:nif_version) |> List.to_string()
+  end
+
+  @doc """
+  Invoke the regular Mix toolchain compilation.
+  """
+  def mix_compile(args) do
+    ElixirMake.Compiler.compile(args)
+  end
 end

@@ -1,4 +1,4 @@
-defmodule Mix.Tasks.ElixirMake.Fetch do
+defmodule Mix.Tasks.ElixirMake.Checksum do
   @shortdoc "Fetch precompiled NIFs and build the checksums"
 
   @moduledoc """
@@ -28,38 +28,40 @@ defmodule Mix.Tasks.ElixirMake.Fetch do
   ]
 
   @impl true
-  def run([]) do
-    raise "the module name and a flag is expected. Use \"--all\" or \"--only-local\" flags"
-  end
-
-  @impl true
   def run(flags) when is_list(flags) do
-    {options, _args, _invalid} = OptionParser.parse(flags, strict: @switches)
+    config = Mix.Project.config()
+
+    precompiler =
+      Mix.Project.config()[:precompiler] ||
+        raise(":make_precompiler project configuration is required when using elixir_make.checksum")
+
+    {options, _args} = OptionParser.parse!(flags, strict: @switches)
 
     urls =
       cond do
         Keyword.get(options, :all) ->
-          Mix.Tasks.ElixirMake.Precompile.available_nif_urls()
+          ElixirMake.Artefact.available_nif_urls(precompiler)
 
         Keyword.get(options, :only_local) ->
-          [Mix.Tasks.ElixirMake.Precompile.current_target_nif_url()]
+          case ElixirMake.Artefact.current_target_nif_url(precompiler) do
+            {:ok, target, url} -> [{target, url}]
+            {:error, error} -> Mix.raise(error)
+          end
 
         true ->
-          raise "you need to specify either \"--all\" or \"--only-local\" flags"
+          Mix.raise("you need to specify either \"--all\" or \"--only-local\" flags")
       end
 
     result = ElixirMake.Artefact.download_nif_artefacts_with_checksums!(urls, options)
 
     if Keyword.get(options, :print) do
       result
-      |> Enum.map(fn map ->
-        {Path.basename(Map.fetch!(map, :path)), Map.fetch!(map, :checksum)}
-      end)
+      |> Enum.map(fn %{path: path, checksum: checksum} -> {Path.basename(path), checksum} end)
       |> Enum.sort()
       |> Enum.map_join("\n", fn {file, checksum} -> "#{checksum}  #{file}" end)
       |> IO.puts()
     end
 
-    ElixirMake.Artefact.write_checksum!(Mix.Project.config()[:app], result)
+    ElixirMake.Artefact.write_checksum!(config[:app], result)
   end
 end
