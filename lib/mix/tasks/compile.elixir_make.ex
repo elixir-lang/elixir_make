@@ -58,6 +58,9 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
     * `:make_precompiler` - the precompiled module to use. Defaults to none.
 
+    * `:make_precompiled_url` - the download URL template. Defaults to none.
+      Required when `make_precompiler` is set.
+
     * `:make_nif_filename` - the filename of the compiled NIF without extension.
       Defaults to the app name.
 
@@ -134,7 +137,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
         with false <- File.exists?(load_path),
              {:error, precomp_error} <-
-               Mix.Tasks.ElixirMake.Precompile.download_or_reuse_nif_file() do
+               Mix.Tasks.ElixirMake.Precompile.download_or_reuse_nif_file(args) do
           message = """
           Error while downloading precompiled NIF: #{precomp_error}.
           You can force the project to build from scratch with:

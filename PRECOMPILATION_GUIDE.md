@@ -36,13 +36,16 @@ def project do
     compilers: [:elixir_make] ++ Mix.compilers(),
     # elixir_make specific config
     make_precompiler: CCPrecompiler,
+    make_precompiled_url: "https://github.com/cocoa-xu/cc_precompiler_example/releases/download/v#{@version}/@{artefact_filename}",
     make_nif_filename: "nif",
-    # cc_precompiler specific config
-    cc_precompile_base_url: "https://github.com/USER/REPO/downloads/releases/v#{@version}",
     # ...
   ]
 end
 ```
+
+Another required field is `make_precompiled_url`. It is a URL template to the artefact file.
+
+`@{artefact_filename}` in the URL template string will be replaced by corresponding artefact filenames when fetching them. For example, `cc_precompiler_example-nif-2.16-x86_64-linux-gnu-0.1.0.tar.gz`.
 
 Note that there is an optional config key for elixir_make, `make_nif_filename`. If the name (file extension does not count) of the shared library is different from your app's name, then `make_nif_filename` should be set. For example, if the app name is `"cc_precompiler_example"` while the name shared library is `"nif.so"` (or `"nif.dll"` on windows), then `make_nif_filename` should be set as `"nif"`.
 
@@ -315,9 +318,7 @@ defmodule CCPrecompiler do
   """
 
   require Logger
-  @behaviour ElixirMake.Precompile
-
-  @available_nif_versions ~w(2.16)
+  @behaviour ElixirMake.Precompiler
 
   # this is the default configuration for this demo precompiler module
   # for linux systems, it will detect for the following targets
@@ -381,7 +382,7 @@ defmodule CCPrecompiler do
   end
 
   @impl ElixirMake.Precompiler
-  def all_supported_targets() do
+  def all_supported_targets(:compile) do
     # this callback is expected to return a list of string for
     #   all supported targets by this precompiler. in this
     #   implementation, we will try to find a few crosscompilers
@@ -396,6 +397,11 @@ defmodule CCPrecompiler do
       _ ->
         []
     end
+  end
+
+  @impl ElixirMake.Precompiler
+  def all_supported_targets(:fetch) do
+    List.flatten(Enum.map(@compilers, &Map.keys(elem(&1, 1))))
   end
 
   defp find_all_available_targets do
@@ -425,35 +431,59 @@ defmodule CCPrecompiler do
     #   and because this precompiler module is designed for NIF
     #   libraries that use C/C++ as the main language with Makefile,
     #   we can just call `ElixirMake.Compile.compile(args)`
+    #
+    # it's also possible to forward this call to:
+    #
+    #   `precompile(args, elem(current_target(), 1))`
+    #
+    #   this could be useful when the precompiler is using a universal
+    #   (cross-)compiler, say zig. in this way, the compiled binaries
+    #   (`mix compile`) will be consistent as the corrsponding precompiled
+    #   one (with `mix elixir_make.precompile`)
+    #
+    #   however, if you'd prefer to having the same behaviour for `mix compile`
+    #   then the following line is okay
     ElixirMake.Compile.compile(args)
   end
 
   @impl ElixirMake.Precompiler
-  def precompile(args, targets) do
-    # in this callback we compile the NIF library for each target given
-    #   in the list `targets`
-    # it's worth noting that the targets in the list could be a subset
-    #   of all supported targets because it's possible that `elixir_make`
-    #   would allow user to set a filter to keep targets they want in the
-    #   future.
-    saved_cwd = File.cwd!()
-    cache_dir = ElixirMake.Artefact.cache_dir()
+  def cache_dir() do
+    # in this optional callback we can return a custom cache directory
+    #   for this precompiler module, this can be useful
+    #   - if you'd prefer to save artefacts in some global location
+    #   - if you'd like to having a user customisable option such as
+    #     `cc_precompiler_cache_dir`
+    ElixirMake.Artefact.cache_dir()
+  end
 
+  @impl ElixirMake.Precompiler
+  def precompile(args, target) do
+    # in this callback we compile the NIF library for the requested target
+    saved_cwd = File.cwd!()
     app = Mix.Project.config()[:app]
     version = Mix.Project.config()[:version]
     nif_version = ElixirMake.Compile.current_nif_version()
 
-    precompiled_artefacts =
-      do_precompile(app, version, nif_version, args, targets, saved_cwd, cache_dir)
+    saved_cc = System.get_env("CC") || ""
+    saved_cxx = System.get_env("CXX") || ""
+    saved_cpp = System.get_env("CPP") || ""
 
-    with {:ok, target} <- current_target() do
-      tar_filename = ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
-      cached_tar_gz = Path.join([cache_dir, tar_filename])
-      ElixirMake.Artefact.restore_nif_file(cached_tar_gz, app)
-    end
+    Logger.debug("Current compiling target: #{target}")
+    ElixirMake.Artefact.make_priv_dir(app, :clean)
 
-    Mix.Project.build_structure()
-    {:ok, precompiled_artefacts}
+    {cc, cxx} = get_cc_and_cxx(target)
+    System.put_env("CC", cc)
+    System.put_env("CXX", cxx)
+    System.put_env("CPP", cxx)
+
+    ElixirMake.Compile.compile(args)
+    
+    File.cd!(saved_cwd)
+    System.put_env("CC", saved_cc)
+    System.put_env("CXX", saved_cxx)
+    System.put_env("CPP", saved_cpp)
+
+    :ok
   end
 
   defp get_cc_and_cxx(triplet, default \\ {"gcc", "g++"}) do
@@ -465,143 +495,15 @@ defmodule CCPrecompiler do
     end
   end
 
-  defp do_precompile(app, version, nif_version, args, targets, saved_cwd, cache_dir) do
-    saved_cc = System.get_env("CC") || ""
-    saved_cxx = System.get_env("CXX") || ""
-    saved_cpp = System.get_env("CPP") || ""
-
-    precompiled_artefacts =
-      Enum.reduce(targets, [], fn target, checksums ->
-        Logger.debug("Current compiling target: #{target}")
-        ElixirMake.Artefact.make_priv_dir(app, :clean)
-
-        {cc, cxx} = get_cc_and_cxx(target)
-        System.put_env("CC", cc)
-        System.put_env("CXX", cxx)
-        System.put_env("CPP", cxx)
-
-        ElixirMake.Compile.compile(args)
-
-        {_archive_full_path, archive_tar_gz, checksum_algo, checksum} =
-          ElixirMake.Artefact.create_precompiled_archive(
-            app,
-            version,
-            nif_version,
-            target,
-            cache_dir
-          )
-
-        [
-          {target, %{path: archive_tar_gz, checksum_algo: checksum_algo, checksum: checksum}}
-          | checksums
-        ]
-      end)
-    ElixirMake.Artefact.write_checksum!(app, precompiled_artefacts)
-
-    File.cd!(saved_cwd)
-    System.put_env("CC", saved_cc)
-    System.put_env("CXX", saved_cxx)
-    System.put_env("CPP", saved_cpp)
-    precompiled_artefacts
-  end
-
-  @impl ElixirMake.Precompiler
-  def available_nif_urls() do
-    # in the callback we return the URL of the precompiled artefacts for all
-    #   available targets
-    # this implementation will return all URLs regardless if they are reachable
-    #   or not. it is possible to only return the URLs that are reachable.
-    app = Mix.Project.config()[:app]
-    version = Mix.Project.config()[:version]
-    base_url = Mix.Project.config()[:cc_precompile_base_url]
-    targets = Enum.uniq(List.flatten(Enum.map(Map.values(@compilers), &Map.keys(&1))))
-
-    for target_triple <- targets, nif_version <- @available_nif_versions do
-      archive_filename =
-        ElixirMake.Artefact.archive_filename(app, version, nif_version, target_triple)
-
-      ElixirMake.Artefact.archive_file_url(base_url, archive_filename)
-    end
-  end
-
-  @impl ElixirMake.Precompiler
-  def current_target_nif_url do
-    # in the callback we return the URL of the precompiled artefacts for the
-    #   current target
-    app = Mix.Project.config()[:app]
-    metadata = ElixirMake.Artefact.metadata(app)
-    nif_version = ElixirMake.Compile.current_nif_version()
-
-    case metadata do
-      %{base_url: base_url, target: target, version: version} ->
-        archive_filename = ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
-        ElixirMake.Artefact.archive_file_url(base_url, archive_filename)
-
-      _ ->
-        raise "metadata about current target for the app #{inspect(app)} is not available. " <>
-                "Please compile the project again with: `mix FennecPrecompile.precompile`"
-    end
-  end
-
   @impl ElixirMake.Precompiler
   def post_precompile() do
     write_metadata_to_file()
-  end
-
-  @impl ElixirMake.Precompiler
-  def download_or_reuse_nif_file() do
-    cache_dir = ElixirMake.Artefact.cache_dir()
-
-    with {:ok, target} <- current_target() do
-      app = Mix.Project.config()[:app]
-      version = Mix.Project.config()[:version]
-      nif_version = ElixirMake.Compile.current_nif_version()
-
-      # note that `:cc_precompile_base_url` here is the key specific to
-      #   this CCPrecompile demo, it's not required by the elixir_make.
-      # you can use any name you want for your own precompiler
-      base_url = Mix.Project.config()[:cc_precompile_base_url]
-
-      tar_filename = ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
-
-      app_priv = ElixirMake.Artefact.app_priv(app)
-      cached_tar_gz = Path.join([cache_dir, tar_filename])
-
-      if !File.exists?(cached_tar_gz) do
-        with :ok <- File.mkdir_p(cache_dir),
-             {:ok, tar_gz} <-
-               ElixirMake.Artefact.download_archived_artefact(base_url, tar_filename),
-             :ok <- File.write(cached_tar_gz, tar_gz) do
-          Logger.debug("NIF cached at #{cached_tar_gz} and extracted to #{app_priv}")
-        end
-      end
-
-      with {:file_exists, true} <- {:file_exists, File.exists?(cached_tar_gz)},
-          {:file_integrity, :ok} <-
-            {:file_integrity, ElixirMake.Artefact.check_file_integrity(cached_tar_gz, app)},
-          {:restore_nif, :ok} <-
-            {:restore_nif, ElixirMake.Artefact.restore_nif_file(cached_tar_gz, app)} do
-        :ok
-      else
-        # of course you can choose to build from scratch instead of letting elixir_make
-        # to raise an error
-        {:file_exists, false} ->
-          {:error, "Cache file not exists or cannot download"}
-
-        {:file_integrity, _} ->
-          {:error, "Cache file integrity check failed"}
-
-        {:restore_nif, status} ->
-          {:error, "Cannot restore nif from cache: #{inspect(status)}"}
-      end
-    end
   end
 
   defp write_metadata_to_file() do
     app = Mix.Project.config()[:app]
     version = Mix.Project.config()[:version]
     nif_version = ElixirMake.Compile.current_nif_version()
-    base_url = Mix.Project.config()[:cc_precompile_base_url]
     cache_dir = ElixirMake.Artefact.cache_dir()
 
     with {:ok, target} <- current_target() do
@@ -611,9 +513,8 @@ defmodule CCPrecompiler do
       metadata = %{
         app: app,
         cached_tar_gz: Path.join([cache_dir, archived_artefact_file]),
-        base_url: base_url,
         target: target,
-        targets: all_supported_targets(),
+        targets: all_supported_targets(:fetch),
         version: version
       }
 

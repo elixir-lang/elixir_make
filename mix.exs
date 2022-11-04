@@ -16,7 +16,7 @@ defmodule ElixirMake.Mixfile do
   end
 
   def application do
-    [extra_applications: [:logger, :crypto, :inets, :public_key]]
+    [extra_applications: [:logger, :crypto, :inets, :public_key, :ssl]]
   end
 
   defp deps do

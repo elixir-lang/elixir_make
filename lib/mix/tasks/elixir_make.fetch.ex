@@ -48,7 +48,7 @@ defmodule Mix.Tasks.ElixirMake.Fetch do
           raise "you need to specify either \"--all\" or \"--only-local\" flags"
       end
 
-    result = ElixirMake.Artefact.download_nif_artifacts_with_checksums!(urls, options)
+    result = ElixirMake.Artefact.download_nif_artefacts_with_checksums!(urls, options)
 
     if Keyword.get(options, :print) do
       result
