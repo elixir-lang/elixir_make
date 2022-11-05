@@ -167,7 +167,7 @@ defmodule ElixirMake.Artefact do
     Path.join(File.cwd!(), "checksum-#{to_string(app)}.exs")
   end
 
-  def create_precompiled_archive(app, version, nif_version, target, cache_dir) do
+  def create_precompiled_archive(app, version, nif_version, target, cache_dir, paths) do
     saved_cwd = File.cwd!()
 
     # TODO: There is no need to traverse symlinks
@@ -179,10 +179,10 @@ defmodule ElixirMake.Artefact do
     archive_full_path = Path.expand(Path.join([cache_dir, archived_filename]))
     File.mkdir_p!(cache_dir)
     Logger.debug("Creating precompiled archive: #{archive_full_path}")
+    Logger.debug("Paths to compress in priv directory: #{inspect(paths)}")
 
-    filelist = build_file_list_at(app_priv)
     File.cd!(app_priv)
-    :ok = :erl_tar.create(archive_full_path, filelist, [:compressed])
+    :ok = :erl_tar.create(archive_full_path, paths, [:compressed])
 
     File.cd!(saved_cwd)
 
@@ -194,66 +194,6 @@ defmodule ElixirMake.Artefact do
 
   def archive_filename(app, version, nif_version, target) do
     "#{app}-nif-#{nif_version}-#{target}-#{version}.tar.gz"
-  end
-
-  defp build_file_list_at(dir) do
-    saved_cwd = File.cwd!()
-    File.cd!(dir)
-    {filelist, _} = build_file_list_at(".", %{}, [])
-    File.cd!(saved_cwd)
-    Enum.map(filelist, &to_charlist/1)
-  end
-
-  defp build_file_list_at(dir, visited, filelist) do
-    visited? = Map.get(visited, dir)
-
-    if visited? do
-      {filelist, visited}
-    else
-      visited = Map.put(visited, dir, true)
-      saved_cwd = File.cwd!()
-
-      case {File.dir?(dir), File.read_link(dir)} do
-        {true, {:error, _}} ->
-          File.cd!(dir)
-          cur_filelist = File.ls!()
-
-          {files, folders} =
-            Enum.reduce(cur_filelist, {[], []}, fn filepath, {files, folders} ->
-              if File.dir?(filepath) do
-                symlink_dir? = Path.join([File.cwd!(), filepath])
-
-                case File.read_link(symlink_dir?) do
-                  {:error, _} ->
-                    {files, [filepath | folders]}
-
-                  {:ok, _} ->
-                    {[Path.join([dir, filepath]) | files], folders}
-                end
-              else
-                {[Path.join([dir, filepath]) | files], folders}
-              end
-            end)
-
-          File.cd!(saved_cwd)
-
-          filelist = files ++ filelist ++ [dir]
-
-          {files_in_folder, visited} =
-            Enum.reduce(folders, {[], visited}, fn folder_path, {files_in_folder, visited} ->
-              {filelist, visited} =
-                build_file_list_at(Path.join([dir, folder_path]), visited, files_in_folder)
-
-              {files_in_folder ++ filelist, visited}
-            end)
-
-          filelist = filelist ++ files_in_folder
-          {filelist, visited}
-
-        _ ->
-          {filelist, visited}
-      end
-    end
   end
 
   def app_priv(app) when is_atom(app) do
