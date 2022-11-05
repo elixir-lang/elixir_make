@@ -312,6 +312,64 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
     end)
   end
 
+  test "precompiler should only include specified files" do
+    in_fixture(fn ->
+      include_this = "include_this"
+      build_file = "build_file"
+
+      precompile_config = [
+        make_precompiler: MyApp.Precompiler,
+        make_precompiler_priv_paths: [include_this, build_file],
+        make_force_build: true
+      ]
+
+      cache_dir = "./cache"
+      File.mkdir_p!(cache_dir)
+      System.put_env("ELIXIR_MAKE_CACHE_DIR", cache_dir)
+
+      File.mkdir!("priv")
+      priv_dir = "./_build/test/lib/my_app/priv"
+      build_file_path = Path.join([priv_dir, build_file])
+      include_this_path = Path.join([priv_dir, include_this])
+      exclude_this_path = Path.join([priv_dir, "exclude_this"])
+
+      File.write!("Makefile", """
+      all:
+      \ttouch #{build_file_path}
+      \ttouch #{include_this_path}
+      \ttouch #{exclude_this_path}
+      """)
+
+      with_project_config(precompile_config, fn ->
+        refute File.exists?(build_file_path)
+        refute File.exists?(include_this_path)
+        refute File.exists?(exclude_this_path)
+
+        capture_io(fn ->
+          Mix.Tasks.ElixirMake.Precompile.run([])
+        end)
+
+        assert File.exists?(build_file_path)
+        assert File.exists?(include_this_path)
+        assert File.exists?(exclude_this_path)
+
+        precompiled_tar_file =
+          "./cache/my_app-nif-#{ElixirMake.Precompiler.current_nif_version()}-target-1.0.0.tar.gz"
+
+        extract_to = "./cache/priv"
+        :erl_tar.extract(precompiled_tar_file, [:compressed, {:cwd, extract_to}])
+
+        build_file_path = Path.join([extract_to, build_file])
+        include_this_path = Path.join([extract_to, include_this])
+        exclude_this_path = Path.join([extract_to, "exclude_this"])
+
+        assert File.exists?(build_file_path)
+        assert File.exists?(include_this_path)
+        assert !File.exists?(exclude_this_path)
+      end)
+    end)
+  end
+
   defp in_fixture(fun) do
     File.cd!(@fixture_project, fun)
   end
