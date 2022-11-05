@@ -39,7 +39,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
         {_archive_full_path, archived_filename, checksum_algo, checksum} =
           case precompiler.precompile(args, target) do
             :ok ->
-              Artefact.create_precompiled_archive(
+              Precompiler.create_precompiled_archive(
                 app,
                 version,
                 nif_version,
@@ -64,7 +64,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
     end
 
     with {:ok, target} <- precompiler.current_target() do
-      archived_filename = Artefact.archive_filename(app, version, nif_version, target)
+      archived_filename = Precompiler.archive_filename(app, version, nif_version, target)
       archived_fullpath = Path.join([cache_dir, archived_filename])
       Artefact.restore_nif_file(archived_fullpath, app)
     end

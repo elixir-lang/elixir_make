@@ -175,54 +175,10 @@ defmodule ElixirMake.Artefact do
     Path.join(File.cwd!(), "checksum-#{to_string(app)}.exs")
   end
 
-  def create_precompiled_archive(app, version, nif_version, target, cache_dir, paths) do
-    app_priv = app_priv(app)
-
-    archived_filename = archive_filename(app, version, nif_version, target)
-    archive_full_path = Path.expand(Path.join([cache_dir, archived_filename]))
-    File.mkdir_p!(cache_dir)
-    Logger.debug("Creating precompiled archive: #{archive_full_path}")
-    Logger.debug("Paths to compress in priv directory: #{inspect(paths)}")
-
-    saved_cwd = File.cwd!()
-    File.cd!(app_priv)
-
-    filepaths =
-      Enum.reduce(paths, [], fn include, filepaths ->
-        Enum.map(Path.wildcard(include), &to_charlist/1) ++ filepaths
-      end)
-
-    :ok = :erl_tar.create(archive_full_path, filepaths, [:compressed])
-    File.cd!(saved_cwd)
-
-    {:ok, algo, checksum} =
-      ElixirMake.Artefact.compute_checksum(archive_full_path, ElixirMake.Artefact.checksum_algo())
-
-    {archive_full_path, archived_filename, algo, checksum}
-  end
-
-  def archive_filename(app, version, nif_version, target) do
-    "#{app}-nif-#{nif_version}-#{target}-#{version}.tar.gz"
-  end
-
-  def app_priv(app) when is_atom(app) do
-    build_path = Mix.Project.build_path()
-    Path.join([build_path, "lib", "#{app}", "priv"])
-  end
-
-  def make_priv_dir(app, :clean) when is_atom(app) do
-    app_priv = app_priv(app)
-    File.rm_rf!(app_priv)
-    make_priv_dir(app)
-  end
-
-  def make_priv_dir(app) when is_atom(app) do
-    File.mkdir_p!(app_priv(app))
-  end
-
   def restore_nif_file(cached_archive, app) do
     Logger.debug("Restore NIF for current node from: #{cached_archive}")
-    :erl_tar.extract(cached_archive, [:compressed, {:cwd, to_string(app_priv(app))}])
+    app_priv = ElixirMake.Precompiler.app_priv(app)
+    :erl_tar.extract(cached_archive, [:compressed, {:cwd, app_priv}])
   end
 
   defp read_map_from_file(file) do
@@ -232,27 +188,6 @@ defmodule ElixirMake.Artefact do
     else
       _ -> %{}
     end
-  end
-
-  def write_metadata(app, metadata) do
-    metadata_file = metadata_file(app)
-    Logger.debug("metadata_file: #{inspect(metadata_file)}")
-    existing = read_map_from_file(metadata_file)
-
-    unless Map.equal?(metadata, existing) do
-      dir = Path.dirname(metadata_file)
-      :ok = File.mkdir_p(dir)
-
-      File.write!(metadata_file, inspect(metadata, limit: :infinity, pretty: true))
-    end
-
-    :ok
-  end
-
-  defp metadata_file(app) do
-    ElixirMake.Precompiler.cache_dir()
-    |> Path.join("metadata")
-    |> Path.join("metadata-#{app}.exs")
   end
 
   def archive_file_url(base_url, file_name) do
@@ -281,7 +216,7 @@ defmodule ElixirMake.Artefact do
     nif_version = ElixirMake.Precompiler.current_nif_version()
 
     Enum.map(targets, fn target ->
-      archive_filename = archive_filename(app, version, nif_version, target)
+      archive_filename = ElixirMake.Precompiler.archive_filename(app, version, nif_version, target)
       {target, String.replace(url_template, "@{artefact_filename}", archive_filename)}
     end)
   end

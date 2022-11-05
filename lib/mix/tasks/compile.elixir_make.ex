@@ -128,7 +128,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
       true ->
         nif_filename = config[:make_nif_filename] || "#{app}"
-        priv_dir = ElixirMake.Artefact.app_priv(app)
+        priv_dir = ElixirMake.Precompiler.app_priv(app)
 
         load_path =
           case :os.type() do
@@ -180,9 +180,9 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
           version = config[:version]
           nif_version = Precompiler.current_nif_version()
-          archived_filename = Artefact.archive_filename(app, version, nif_version, target)
+          archived_filename = Precompiler.archive_filename(app, version, nif_version, target)
 
-          app_priv = Artefact.app_priv(app)
+          app_priv = Precompiler.app_priv(app)
           archived_fullpath = Path.join([cache_dir, archived_filename])
 
           with false <- File.exists?(archived_fullpath),
