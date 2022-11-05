@@ -22,7 +22,6 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
 
   @switches [
     all: :boolean,
-    dep: :string,
     only_local: :boolean,
     print: :boolean,
     ignore_unavailable: :boolean
@@ -39,16 +38,6 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
         )
 
     {options, _args} = OptionParser.parse!(flags, strict: @switches)
-
-    dep = options[:dep]
-    if dep do
-      dep_config =
-        Enum.find(config[:deps], fn dep_entry ->
-          elem(dep_entry, 0) == dep
-        end)
-      IO.inspect(dep_config)
-      raise RuntimeError, "dep_config"
-    end
 
     urls =
       cond do
