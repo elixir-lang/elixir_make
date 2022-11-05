@@ -492,31 +492,10 @@ defmodule CCPrecompiler do
 
   @impl ElixirMake.Precompiler
   def post_precompile() do
-    write_metadata_to_file()
-  end
-
-  defp write_metadata_to_file() do
-    app = Mix.Project.config()[:app]
-    version = Mix.Project.config()[:version]
-    nif_version = ElixirMake.Precompiler.current_nif_version()
-    cache_dir = ElixirMake.Precompiler.cache_dir()
-
-    with {:ok, target} <- current_target() do
-      archived_artefact_file =
-        ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
-
-      metadata = %{
-        app: app,
-        cached_tar_gz: Path.join([cache_dir, archived_artefact_file]),
-        target: target,
-        targets: all_supported_targets(:fetch),
-        version: version
-      }
-
-      ElixirMake.Artefact.write_metadata(app, metadata)
-    end
-
-    :ok
+    # It's possible to do some post precompilation work
+    # in this optionall callback
+    # after all precompile targets are compiled.
+    Logger.debug("Post precompile")
   end
 end
 ```
