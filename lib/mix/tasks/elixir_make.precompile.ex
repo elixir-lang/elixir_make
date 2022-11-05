@@ -19,7 +19,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
     nif_version = Precompiler.current_nif_version()
 
     precompiler =
-      config[:precompiler] ||
+      config[:make_precompiler] ||
         Mix.raise(
           ":make_precompiler project configuration is required when using elixir_make.precompile"
         )
