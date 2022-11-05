@@ -370,10 +370,8 @@ defmodule ElixirMake.Artefact do
                            # A little hack to use cacerts.pem in CAStore
                            Path.join([Path.dirname(Mix.ProjectStack.project_file()), "deps/castore/priv/cacerts.pem"]),
 
-                           # Populated if hex package certfi is configured
-                           if(Code.ensure_loaded?(:certifi),
-                             do: :certifi.cacertfile() |> List.to_string()
-                           ),
+                           # A little hack to use cacerts.pem in :certfi
+                           Path.join([Path.dirname(Mix.ProjectStack.project_file()), "deps/certfi/priv/cacerts.pem"]),
 
                            # Debian/Ubuntu/Gentoo etc.
                            "/etc/ssl/certs/ca-certificates.crt",
@@ -424,11 +422,9 @@ defmodule ElixirMake.Artefact do
        be automatically detected after recompilation.
 
     3. Specify the location of a certificate trust store
-       by configuring it in `config.exs`:
+       by configuring it in environment variable:
 
-         config :elixir_make,
-           cacertfile: "/path/to/cacertfile",
-           ...
+         export ELIXIR_MAKE_CACERT="/path/to/cacerts.pem"
     """
     ""
   end
