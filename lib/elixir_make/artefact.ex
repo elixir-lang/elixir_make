@@ -125,7 +125,8 @@ defmodule ElixirMake.Artefact do
           {:ok, {algo, hash}}
 
         :error ->
-          {:error, "precompiled tar file does not exist in the checksum file, `checksum-#{app}.exs`."}
+          {:error,
+           "precompiled tar file does not exist in the checksum file, `checksum-#{app}.exs`."}
       end
     else
       {:error, "missing checksum file `checksum-#{app}.exs`"}

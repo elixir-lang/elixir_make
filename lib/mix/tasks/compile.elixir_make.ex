@@ -186,9 +186,9 @@ defmodule Mix.Tasks.Compile.ElixirMake do
           archived_fullpath = Path.join([cache_dir, archived_filename])
 
           with false <- File.exists?(archived_fullpath),
-              :ok <- File.mkdir_p(cache_dir),
-              {:ok, archived_data} <- Artefact.download_nif_artefact(url),
-              :ok <- File.write(archived_fullpath, archived_data) do
+               :ok <- File.mkdir_p(cache_dir),
+               {:ok, archived_data} <- Artefact.download_nif_artefact(url),
+               :ok <- File.write(archived_fullpath, archived_data) do
             Mix.shell().info("NIF cached at #{archived_fullpath} and extracted to #{app_priv}")
           end
 
@@ -226,6 +226,5 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       :ok ->
         :ok
     end
-
   end
 end
