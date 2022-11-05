@@ -124,21 +124,11 @@ defmodule ElixirMake.Artefact do
         # TODO: This advice is unfortunately incorrect. We can't use `mix elixir_make.checksum app`
         # to compile a dependency. I think in this case we need to provide a escape hatch for a parent
         # project to force a dependency to be compiled natively.
-        case Mix.Project.config()[:app] do
-          ^app ->
-            {:error, """
-              the precompiled NIF file does not exist in the checksum file.
-              Please consider run: `mix elixir_make.checksum #{app} --only-local` to generate the checksum file.
-              """
-            }
-          dep ->
-            {:error, """
-              the precompiled NIF file for dependency `#{dep}` does not exist in the checksum file, `checksum-#{dep}.exs`.
-              Please consider run: `mix elixir_make.checksum --dep #{app} --only-local` to generate the checksum file.
-              Or compile the dependency natively: `mix compile.#{dep}`
-              """
-            }
-        end
+        {:error,
+         """
+         the precompiled NIF file does not exist in the checksum file.
+         Please consider run: `mix elixir_make.checksum #{app} --only-local` to generate the checksum file.
+         """}
     end
   end
 
@@ -195,6 +185,7 @@ defmodule ElixirMake.Artefact do
 
     saved_cwd = File.cwd!()
     File.cd!(app_priv)
+
     filepaths =
       Enum.reduce(paths, [], fn include, filepaths ->
         Enum.map(Path.wildcard(include), &to_charlist/1) ++ filepaths
@@ -363,37 +354,49 @@ defmodule ElixirMake.Artefact do
 
   # https_opts and related code are taken from
   # https://github.com/elixir-cldr/cldr_utils/blob/master/lib/cldr/http/http.ex
-  @certificate_locations [
-                           # Configured cacertfile
-                           System.get_env("ELIXIR_MAKE_CACERT"),
+  @certificate_locations ([
+                            # Configured cacertfile
+                            System.get_env("ELIXIR_MAKE_CACERT")
+                          ] ++
+                            (if function_exported?(Mix.ProjectStack, :project_file, 0) do
+                               [
+                                 # A little hack to use cacerts.pem in CAStore
+                                 Path.join([
+                                   Path.dirname(Mix.ProjectStack.project_file()),
+                                   "deps/castore/priv/cacerts.pem"
+                                 ]),
 
-                           # A little hack to use cacerts.pem in CAStore
-                           Path.join([Path.dirname(Mix.ProjectStack.project_file()), "deps/castore/priv/cacerts.pem"]),
+                                 # A little hack to use cacerts.pem in :certfi
+                                 Path.join([
+                                   Path.dirname(Mix.ProjectStack.project_file()),
+                                   "deps/certfi/priv/cacerts.pem"
+                                 ])
+                               ]
+                             else
+                               []
+                             end) ++
+                            [
+                              # Debian/Ubuntu/Gentoo etc.
+                              "/etc/ssl/certs/ca-certificates.crt",
 
-                           # A little hack to use cacerts.pem in :certfi
-                           Path.join([Path.dirname(Mix.ProjectStack.project_file()), "deps/certfi/priv/cacerts.pem"]),
+                              # Fedora/RHEL 6
+                              "/etc/pki/tls/certs/ca-bundle.crt",
 
-                           # Debian/Ubuntu/Gentoo etc.
-                           "/etc/ssl/certs/ca-certificates.crt",
+                              # OpenSUSE
+                              "/etc/ssl/ca-bundle.pem",
 
-                           # Fedora/RHEL 6
-                           "/etc/pki/tls/certs/ca-bundle.crt",
+                              # OpenELEC
+                              "/etc/pki/tls/cacert.pem",
 
-                           # OpenSUSE
-                           "/etc/ssl/ca-bundle.pem",
+                              # CentOS/RHEL 7
+                              "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
 
-                           # OpenELEC
-                           "/etc/pki/tls/cacert.pem",
+                              # Open SSL on MacOS
+                              "/usr/local/etc/openssl/cert.pem",
 
-                           # CentOS/RHEL 7
-                           "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
-
-                           # Open SSL on MacOS
-                           "/usr/local/etc/openssl/cert.pem",
-
-                           # MacOS & Alpine Linux
-                           "/etc/ssl/cert.pem"
-                         ]
+                              # MacOS & Alpine Linux
+                              "/etc/ssl/cert.pem"
+                            ])
                          |> Enum.reject(&is_nil/1)
 
   defp certificate_store do
@@ -404,7 +407,7 @@ defmodule ElixirMake.Artefact do
   end
 
   defp warning_if_no_cacertfile!(nil) do
-    Logger.warning """
+    Logger.warning("""
     No certificate trust store was found.
 
     Tried looking for: #{inspect(@certificate_locations)}
@@ -425,7 +428,8 @@ defmodule ElixirMake.Artefact do
        by configuring it in environment variable:
 
          export ELIXIR_MAKE_CACERT="/path/to/cacerts.pem"
-    """
+    """)
+
     ""
   end
 
