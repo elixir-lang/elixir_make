@@ -72,7 +72,12 @@ defmodule ElixirMake.Artefact do
             Logger.info("Skipped unavailable NIF artifact. Reason: #{inspect(result)}")
             []
           else
-            raise "could not finish the download of NIF artifacts. Reason: #{inspect(result)}"
+            # Only `raise` is not enough because if the library is used as a dependency in an app
+            # the user won't see the error message but only
+            #   `could not compile dependency :some_app, "mix compile" failed. Errors may have been logged above.`
+            # So we have to explicitly log the error message
+            msg = "could not finish the download of NIF artifacts. Reason: #{inspect(result)}"
+            Logger.error(msg)
           end
       end
     end)
@@ -93,19 +98,19 @@ defmodule ElixirMake.Artefact do
 
   def check_file_integrity(file_path, app) when is_atom(app) do
     checksum_map(app)
-    |> check_integrity_from_map(file_path)
+    |> check_integrity_from_map(app, file_path)
   end
 
   # It receives the map of %{ "filename" => "algo:checksum" } with the file path
   @doc false
-  def check_integrity_from_map(checksum_map, file_path) do
-    with {:ok, {algo, hash}} <- find_checksum(checksum_map, file_path),
+  def check_integrity_from_map(checksum_map, app, file_path) do
+    with {:ok, {algo, hash}} <- find_checksum(checksum_map, app, file_path),
          :ok <- validate_checksum_algo(algo) do
       compare_checksum(file_path, algo, hash)
     end
   end
 
-  defp find_checksum(checksum_map, file_path) do
+  defp find_checksum(checksum_map, app, file_path) do
     basename = Path.basename(file_path)
 
     case Map.fetch(checksum_map, basename) do
@@ -119,9 +124,21 @@ defmodule ElixirMake.Artefact do
         # TODO: This advice is unfortunately incorrect. We can't use `mix elixir_make.checksum app`
         # to compile a dependency. I think in this case we need to provide a escape hatch for a parent
         # project to force a dependency to be compiled natively.
-        {:error,
-         "the precompiled NIF file does not exist in the checksum file. " <>
-           "Please consider run: `mix elixir_make.checksum #{Mix.Project.config()[:app]} --only-local` to generate the checksum file."}
+        case Mix.Project.config()[:app] do
+          ^app ->
+            {:error, """
+              the precompiled NIF file does not exist in the checksum file.
+              Please consider run: `mix elixir_make.checksum #{app} --only-local` to generate the checksum file.
+              """
+            }
+          dep ->
+            {:error, """
+              the precompiled NIF file for dependency `#{dep}` does not exist in the checksum file, `checksum-#{dep}.exs`.
+              Please consider run: `mix elixir_make.checksum --dep #{app} --only-local` to generate the checksum file.
+              Or compile the dependency natively: `mix compile.#{dep}`
+              """
+            }
+        end
     end
   end
 
@@ -255,15 +272,6 @@ defmodule ElixirMake.Artefact do
       end)
 
     to_string(uri)
-  end
-
-  # TODO: Remove metadata functions
-  def metadata(app) do
-    Logger.debug("app: #{inspect(metadata_file(app))}")
-
-    app
-    |> metadata_file()
-    |> read_map_from_file()
   end
 
   ## NIF URLs

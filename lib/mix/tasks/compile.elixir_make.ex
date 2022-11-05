@@ -139,7 +139,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
         with false <- File.exists?(load_path),
              {:error, precomp_error} <- download_or_reuse_or_build_nif(precompiler, args) do
           message = """
-          Error while downloading precompiled NIF: #{precomp_error}.
+          Error while installing precompiled NIF: #{precomp_error}.
 
           You can force the project to build from scratch with:
 
@@ -207,12 +207,14 @@ defmodule Mix.Tasks.Compile.ElixirMake do
             end
 
           false ->
-            {:error, "cache file does not exist or cannot download"}
+            Mix.shell().error("""
+            precompiled tar file does not exist or cannot download, attempting to build from source...
+            """)
+            precompiler.build_native(args)
         end
 
       {:error, msg} ->
-        Mix.shell().error(msg)
-        Mix.shell().info("Attempting to build from scratch...")
+        Mix.shell().error(msg <> " attempting to build from source...")
         precompiler.build_native(args)
     end
   end
