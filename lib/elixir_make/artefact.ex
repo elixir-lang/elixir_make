@@ -107,28 +107,28 @@ defmodule ElixirMake.Artefact do
     with {:ok, {algo, hash}} <- find_checksum(checksum_map, app, file_path),
          :ok <- validate_checksum_algo(algo) do
       compare_checksum(file_path, algo, hash)
+    else
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
   defp find_checksum(checksum_map, app, file_path) do
     basename = Path.basename(file_path)
 
-    case Map.fetch(checksum_map, basename) do
-      {:ok, algo_with_hash} ->
-        [algo, hash] = String.split(algo_with_hash, ":")
-        algo = String.to_existing_atom(algo)
+    if Enum.count(Map.keys(checksum_map)) > 0 do
+      case Map.fetch(checksum_map, basename) do
+        {:ok, algo_with_hash} ->
+          [algo, hash] = String.split(algo_with_hash, ":")
+          algo = String.to_existing_atom(algo)
 
-        {:ok, {algo, hash}}
+          {:ok, {algo, hash}}
 
-      :error ->
-        # TODO: This advice is unfortunately incorrect. We can't use `mix elixir_make.checksum app`
-        # to compile a dependency. I think in this case we need to provide a escape hatch for a parent
-        # project to force a dependency to be compiled natively.
-        {:error,
-         """
-         the precompiled NIF file does not exist in the checksum file.
-         Please consider run: `mix elixir_make.checksum #{app} --only-local` to generate the checksum file.
-         """}
+        :error ->
+          {:error, "precompiled tar file does not exist in the checksum file, `checksum-#{app}.exs`."}
+      end
+    else
+      {:error, "missing checksum file `checksum-#{app}.exs`"}
     end
   end
 

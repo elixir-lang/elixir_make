@@ -139,14 +139,12 @@ defmodule Mix.Tasks.Compile.ElixirMake do
         with false <- File.exists?(load_path),
              {:error, precomp_error} <- download_or_reuse_or_build_nif(precompiler, args) do
           message = """
-          Error while installing precompiled NIF: #{precomp_error}.
-
-          You can force the project to build from scratch with:
-
-              mix elixir_make.precompile
+          Error happened while installing #{app} from precompiled binary: #{precomp_error}.
+          Now fallback to compile #{app} from source...
           """
 
-          Mix.raise(message)
+          Mix.shell().error(message)
+          precompiler.build_native(args)
         else
           _ -> {:ok, []}
         end
@@ -155,6 +153,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
   # This is called by Elixir when `mix clean` is run and `:elixir_make` is in
   # the list of compilers.
+  @spec clean :: nil | :ok
   def clean() do
     config = Mix.Project.config()
     {clean_targets, config} = Keyword.pop(config, :make_clean)
@@ -171,57 +170,62 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   end
 
   defp download_or_reuse_or_build_nif(precompiler, args) do
-    case Artefact.current_target_nif_url(precompiler) do
-      {:ok, target, url} ->
-        cache_dir = Precompiler.cache_dir()
+    config = Mix.Project.config()
+    app = config[:app]
 
-        config = Mix.Project.config()
-        app = config[:app]
-        version = config[:version]
-        nif_version = Precompiler.current_nif_version()
-        archived_filename = Artefact.archive_filename(app, version, nif_version, target)
+    status =
+      case Artefact.current_target_nif_url(precompiler) do
+        {:ok, target, url} ->
+          cache_dir = Precompiler.cache_dir()
 
-        app_priv = Artefact.app_priv(app)
-        archived_fullpath = Path.join([cache_dir, archived_filename])
+          version = config[:version]
+          nif_version = Precompiler.current_nif_version()
+          archived_filename = Artefact.archive_filename(app, version, nif_version, target)
 
-        with false <- File.exists?(archived_fullpath),
-             :ok <- File.mkdir_p(cache_dir),
-             {:ok, archived_data} <- Artefact.download_nif_artefact(url),
-             :ok <- File.write(archived_fullpath, archived_data) do
-          Mix.shell().info("NIF cached at #{archived_fullpath} and extracted to #{app_priv}")
-        end
+          app_priv = Artefact.app_priv(app)
+          archived_fullpath = Path.join([cache_dir, archived_filename])
 
-        case File.exists?(archived_fullpath) do
-          true ->
-            case Artefact.check_file_integrity(archived_fullpath, app) do
-              :ok ->
-                case Artefact.restore_nif_file(archived_fullpath, app) do
-                  :ok ->
-                    :ok
+          with false <- File.exists?(archived_fullpath),
+              :ok <- File.mkdir_p(cache_dir),
+              {:ok, archived_data} <- Artefact.download_nif_artefact(url),
+              :ok <- File.write(archived_fullpath, archived_data) do
+            Mix.shell().info("NIF cached at #{archived_fullpath} and extracted to #{app_priv}")
+          end
 
-                  {:error, term} ->
-                    msg = "cannot restore nif from cache: #{inspect(term)}"
-                    Mix.shell().error(msg)
-                    {:error, msg}
-                end
+          case File.exists?(archived_fullpath) do
+            true ->
+              case Artefact.check_file_integrity(archived_fullpath, app) do
+                :ok ->
+                  case Artefact.restore_nif_file(archived_fullpath, app) do
+                    :ok ->
+                      :ok
 
-              {:error, reason} ->
-                msg = "cache file integrity check failed: #{reason}"
-                Mix.shell().error(msg)
-                {:error, msg}
-            end
+                    {:error, term} ->
+                      {:error, "cannot restore nif from cache: #{inspect(term)}"}
+                  end
 
-          false ->
-            Mix.shell().error("""
-            precompiled tar file does not exist or cannot download, attempting to build from source...
-            """)
+                {:error, reason} ->
+                  {:error, "cache file integrity check failed: #{reason}"}
+              end
 
-            precompiler.build_native(args)
-        end
+            false ->
+              {:error, "precompiled tar file does not exist or cannot download"}
+          end
 
-      {:error, msg} ->
-        Mix.shell().error(msg <> " attempting to build from source...")
+        {:error, msg} ->
+          {:error, msg}
+      end
+
+    # whenever we fail to use the precompiled one
+    # we should fallback to building from source.
+    case status do
+      {:error, reason} ->
+        Mix.shell().error(reason <> "; fallback to building #{app} from source...")
         precompiler.build_native(args)
+
+      :ok ->
+        :ok
     end
+
   end
 end
