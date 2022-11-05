@@ -168,12 +168,7 @@ defmodule ElixirMake.Artefact do
   end
 
   def create_precompiled_archive(app, version, nif_version, target, cache_dir, paths) do
-    saved_cwd = File.cwd!()
-
-    # TODO: There is no need to traverse symlinks
-    # TODO: Skip the need for `File.cd!(app_priv)`
     app_priv = app_priv(app)
-    File.cd!(app_priv)
 
     archived_filename = archive_filename(app, version, nif_version, target)
     archive_full_path = Path.expand(Path.join([cache_dir, archived_filename]))
@@ -181,9 +176,14 @@ defmodule ElixirMake.Artefact do
     Logger.debug("Creating precompiled archive: #{archive_full_path}")
     Logger.debug("Paths to compress in priv directory: #{inspect(paths)}")
 
+    saved_cwd = File.cwd!()
     File.cd!(app_priv)
-    :ok = :erl_tar.create(archive_full_path, paths, [:compressed])
+    filepaths =
+      Enum.reduce(paths, [], fn include, filepaths ->
+        Enum.map(Path.wildcard(include), &to_charlist/1) ++ filepaths
+      end)
 
+    :ok = :erl_tar.create(archive_full_path, filepaths, [:compressed])
     File.cd!(saved_cwd)
 
     {:ok, algo, checksum} =

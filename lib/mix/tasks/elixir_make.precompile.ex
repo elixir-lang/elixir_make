@@ -15,7 +15,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   def run(args) do
     config = Mix.Project.config()
     app = config[:app]
-    paths = config[:make_precompiler_priv_paths] || ['.']
+    paths = config[:make_precompiler_priv_paths] || ["."]
     version = config[:version]
     nif_version = Precompiler.current_nif_version()
 
