@@ -304,10 +304,10 @@ defmodule ElixirMake.Artefact do
                                    "deps/castore/priv/cacerts.pem"
                                  ]),
 
-                                 # A little hack to use cacerts.pem in :certfi
+                                 # A little hack to use cacerts.pem in :certifi
                                  Path.join([
                                    Path.dirname(Mix.ProjectStack.project_file()),
-                                   "deps/certfi/priv/cacerts.pem"
+                                   "deps/certifi/priv/cacerts.pem"
                                  ])
                                ]
                              else
