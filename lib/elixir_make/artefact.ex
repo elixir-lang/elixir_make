@@ -367,8 +367,8 @@ defmodule ElixirMake.Artefact do
                            # Configured cacertfile
                            System.get_env("ELIXIR_MAKE_CACERT"),
 
-                           # Populated if hex package CAStore is configured
-                           if(Code.ensure_loaded?(CAStore), do: CAStore.file_path()),
+                           # A little hack to use cacerts.pem in CAStore
+                           Path.join([Path.dirname(Mix.ProjectStack.project_file()), "deps/castore/priv/cacerts.pem"]),
 
                            # Populated if hex package certfi is configured
                            if(Code.ensure_loaded?(:certifi),
@@ -401,12 +401,12 @@ defmodule ElixirMake.Artefact do
   defp certificate_store do
     @certificate_locations
     |> Enum.find(&File.exists?/1)
-    |> raise_if_no_cacertfile!
+    |> warning_if_no_cacertfile!
     |> :erlang.binary_to_list()
   end
 
-  defp raise_if_no_cacertfile!(nil) do
-    raise RuntimeError, """
+  defp warning_if_no_cacertfile!(nil) do
+    Logger.warning """
     No certificate trust store was found.
 
     Tried looking for: #{inspect(@certificate_locations)}
@@ -430,9 +430,10 @@ defmodule ElixirMake.Artefact do
            cacertfile: "/path/to/cacertfile",
            ...
     """
+    ""
   end
 
-  defp raise_if_no_cacertfile!(file) do
+  defp warning_if_no_cacertfile!(file) do
     file
   end
 end
