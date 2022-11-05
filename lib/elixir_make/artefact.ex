@@ -216,7 +216,9 @@ defmodule ElixirMake.Artefact do
     nif_version = ElixirMake.Precompiler.current_nif_version()
 
     Enum.map(targets, fn target ->
-      archive_filename = ElixirMake.Precompiler.archive_filename(app, version, nif_version, target)
+      archive_filename =
+        ElixirMake.Precompiler.archive_filename(app, version, nif_version, target)
+
       {target, String.replace(url_template, "@{artefact_filename}", archive_filename)}
     end)
   end
