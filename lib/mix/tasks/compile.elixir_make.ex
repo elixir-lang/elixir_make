@@ -175,8 +175,9 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       {:ok, target, url} ->
         cache_dir = Precompiler.cache_dir()
 
-        app = Mix.Project.config()[:app]
-        version = Mix.Project.config()[:version]
+        config = Mix.Project.config()
+        app = config[:app]
+        version = config[:version]
         nif_version = Precompiler.current_nif_version()
         archived_filename = Artefact.archive_filename(app, version, nif_version, target)
 
@@ -199,17 +200,22 @@ defmodule Mix.Tasks.Compile.ElixirMake do
                     :ok
 
                   {:error, term} ->
-                    {:error, "cannot restore nif from cache: #{inspect(term)}"}
+                    msg = "cannot restore nif from cache: #{inspect(term)}"
+                    Mix.shell().error(msg)
+                    {:error, msg}
                 end
 
               {:error, reason} ->
-                {:error, "cache file integrity check failed: #{reason}"}
+                msg = "cache file integrity check failed: #{reason}"
+                Mix.shell().error(msg)
+                {:error, msg}
             end
 
           false ->
             Mix.shell().error("""
             precompiled tar file does not exist or cannot download, attempting to build from source...
             """)
+
             precompiler.build_native(args)
         end
 
