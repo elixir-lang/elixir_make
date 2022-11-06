@@ -186,15 +186,10 @@ defmodule ElixirMake.Artefact do
           # regular dir
           add_to_archive(archive, [Path.join(include, "**")], relative_to)
 
-        {true, {:ok, _}} ->
-          # todo: handle symlink dir properly
-          IO.puts("dir #{file} is symlink, filepath=#{filepath}, symlink=#{String.to_charlist(file)}")
-          IO.inspect(:file.read_link_info(file), label: "file")
-          :ok = :erl_tar.add(archive, file, filepath, [:compressed])
-
-        {false, _} ->
+        _ ->
           # regular/symlink files
-          case :erl_tar.add(archive, {filepath, file}, []) do
+          # symlink dirs
+          case :erl_tar.add(archive, String.to_charlist(file), filepath, [:compressed]) do
             :ok ->
               :ok
 
