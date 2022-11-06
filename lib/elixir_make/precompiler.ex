@@ -120,29 +120,4 @@ defmodule ElixirMake.Precompiler do
   def archive_filename(app, version, nif_version, target) do
     "#{app}-nif-#{nif_version}-#{target}-#{version}.tar.gz"
   end
-
-  @doc """
-  Create precompiled tar archive file.
-  """
-  def create_precompiled_archive(app, version, nif_version, target, cache_dir, paths) do
-    app_priv = ElixirMake.Precompiler.app_priv(app)
-
-    archived_filename = ElixirMake.Precompiler.archive_filename(app, version, nif_version, target)
-    archive_full_path = Path.expand(Path.join([cache_dir, archived_filename]))
-    File.mkdir_p!(cache_dir)
-    Logger.debug("Creating precompiled archive: #{archive_full_path}")
-    Logger.debug("Paths to compress in priv directory: #{inspect(paths)}")
-
-    filepaths =
-      for include <- paths,
-          file <- Path.wildcard(Path.join(app_priv, include)),
-          do: {file |> Path.relative_to(app_priv) |> String.to_charlist(), File.read!(file)}
-
-    :ok = :erl_tar.create(archive_full_path, filepaths, [:compressed])
-
-    {:ok, algo, checksum} =
-      ElixirMake.Artefact.compute_checksum(archive_full_path, ElixirMake.Artefact.checksum_algo())
-
-    {archive_full_path, archived_filename, algo, checksum}
-  end
 end

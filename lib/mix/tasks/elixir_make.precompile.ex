@@ -39,7 +39,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
         {_archive_full_path, archived_filename, checksum_algo, checksum} =
           case precompiler.precompile(args, target) do
             :ok ->
-              Precompiler.create_precompiled_archive(
+              Artefact.create_precompiled_archive(
                 app,
                 version,
                 nif_version,
