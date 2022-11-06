@@ -143,11 +143,10 @@ defmodule ElixirMake.Artefact do
           {:ok, {algo, hash}}
 
         :error ->
-          {:error,
-           "precompiled tar file does not exist in the checksum file, `checksum.exs`."}
+          {:error, "precompiled tar file does not exist in checksum.exs"}
       end
     else
-      {:error, "missing checksum file `checksum.exs`"}
+      {:error, "missing checksum.exs file"}
     end
   end
 
@@ -219,7 +218,7 @@ defmodule ElixirMake.Artefact do
   Returns the full path to the precompiled archive.
   """
   def archive_fullpath(config, target) do
-    Path.join(Artefact.cache_dir(), archive_filename(config, target))
+    Path.join(cache_dir(), archive_filename(config, target))
   end
 
   defp archive_filename(config, target) do
