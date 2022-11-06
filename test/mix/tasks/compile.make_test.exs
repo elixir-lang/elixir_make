@@ -319,7 +319,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
 
       precompile_config = [
         make_precompiler: MyApp.Precompiler,
-        make_precompiler_priv_paths: ["include_this*.txt", build_file],
+        make_precompiler_priv_paths: ["include_this*.txt", "symlink_to_lib", "lib", build_file],
         make_force_build: true
       ]
 
@@ -329,21 +329,28 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
 
       File.mkdir!("priv")
       priv_dir = "./_build/test/lib/my_app/priv"
-      build_file_path = Path.join(priv_dir, build_file)
+      build_file_path = Path.join([priv_dir, build_file])
       include_this_path = Enum.map(include_this, fn file -> Path.join([priv_dir, file]) end)
       exclude_this_path = Path.join([priv_dir, "exclude_this"])
+      lib_dir_path = Path.join([priv_dir, "lib"])
+      symlink_to_lib_dir_path = Path.join([priv_dir, "symlink_to_lib"])
 
       File.write!("Makefile", """
       all:
       \ttouch #{build_file_path}
       \ttouch #{Enum.join(include_this_path, " ")}
       \ttouch #{exclude_this_path}
+      \tmkdir -p #{lib_dir_path}
+      \ttouch #{Path.join(lib_dir_path, "keep")}
+      \tln -s lib #{symlink_to_lib_dir_path}
       """)
 
       with_project_config(precompile_config, fn ->
         refute File.exists?(build_file_path)
         refute Enum.all?(include_this_path, &File.exists?/1)
         refute File.exists?(exclude_this_path)
+        refute File.dir?(lib_dir_path)
+        refute :ok == elem(File.read_link(symlink_to_lib_dir_path), 0)
 
         capture_io(fn ->
           Mix.Tasks.ElixirMake.Precompile.run([])
@@ -352,20 +359,27 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
         assert File.exists?(build_file_path)
         assert Enum.all?(include_this_path, &File.exists?/1)
         assert File.exists?(exclude_this_path)
+        assert File.dir?(lib_dir_path)
+        assert :ok == elem(File.read_link(symlink_to_lib_dir_path), 0)
 
         precompiled_tar_file =
           "./cache/my_app-nif-#{:erlang.system_info(:nif_version)}-target-1.0.0.tar.gz"
 
         extract_to = "./cache/priv"
+        File.rm_rf(extract_to)
         :erl_tar.extract(precompiled_tar_file, [:compressed, {:cwd, extract_to}])
 
-        build_file_path = Path.join(extract_to, build_file)
+        build_file_path = Path.join([extract_to, build_file])
         include_this_path = Enum.map(include_this, fn file -> Path.join([extract_to, file]) end)
-        exclude_this_path = Path.join(extract_to, "exclude_this")
+        exclude_this_path = Path.join([extract_to, "exclude_this"])
+        extracted_lib_dir_path = Path.join([extract_to, "lib"])
+        extracted_symlink_to_lib_dir_path = Path.join([extract_to, "symlink_to_lib"])
 
         assert File.exists?(build_file_path)
         assert Enum.all?(include_this_path, &File.exists?/1)
         assert !File.exists?(exclude_this_path)
+        assert File.dir?(extracted_lib_dir_path)
+        assert :ok == elem(File.read_link(extracted_symlink_to_lib_dir_path), 0)
       end)
     end)
   end
