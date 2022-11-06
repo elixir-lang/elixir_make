@@ -190,8 +190,15 @@ defmodule ElixirMake.Artefact do
 
     filepaths =
       for include <- paths,
-          file <- Path.wildcard(Path.join(app_priv, include)),
-          do: {file |> Path.relative_to(app_priv) |> String.to_charlist(), File.read!(file)}
+          file <- Path.wildcard(Path.join(app_priv, include)) do
+        filepath = file |> Path.relative_to(app_priv) |> String.to_charlist()
+
+        if File.dir?(file) do
+          filepath
+        else
+          {filepath, File.read!(file)}
+        end
+      end
 
     :ok = :erl_tar.create(archive_full_path, filepaths, [:compressed])
 
