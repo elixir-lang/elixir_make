@@ -188,12 +188,13 @@ defmodule ElixirMake.Artefact do
 
         {true, {:ok, _}} ->
           # todo: handle symlink dir properly
-          IO.puts("dir #{file} is symlink, filepath=#{filepath}")
-          :erl_tar.add(archive, {filepath, String.to_charlist(file)}, [])
+          IO.puts("dir #{file} is symlink, filepath=#{filepath}, symlink=#{String.to_charlist(file)}")
+          IO.inspect(:file.read_link_info(file), label: "file")
+          :ok = :erl_tar.add(archive, file, filepath, [])
 
         {false, _} ->
           # regular/symlink files
-          case :erl_tar.add(archive, {filepath, String.to_charlist(file)}, []) do
+          case :erl_tar.add(archive, {filepath, file}, []) do
             :ok ->
               :ok
 
