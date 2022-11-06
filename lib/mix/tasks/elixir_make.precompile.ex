@@ -25,13 +25,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
           ":make_precompiler project configuration is required when using elixir_make.precompile"
         )
 
-    cache_dir =
-      if function_exported?(precompiler, :cache_dir, 0) do
-        precompiler.cache_dir()
-      else
-        Precompiler.cache_dir()
-      end
-
+    cache_dir = Precompiler.cache_dir()
     targets = precompiler.all_supported_targets(:compile)
 
     precompiled_artefacts =

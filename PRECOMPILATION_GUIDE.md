@@ -491,16 +491,6 @@ defmodule CCPrecompiler do
   end
 
   @impl ElixirMake.Precompiler
-  def cache_dir() do
-    # in this optional callback we can return a custom cache directory
-    # for this precompiler module, this can be useful
-    #   - if you'd prefer to save artefacts in some global location
-    #   - if you'd like to having a user customisable option such as
-    #     `cc_precompiler_cache_dir`
-    ElixirMake.Precompiler.cache_dir()
-  end
-
-  @impl ElixirMake.Precompiler
   def precompile(args, target) do
     # Potentially clean the output directory to avoid conflicts
     File.rm!(Path.join(Mix.Project.app_path(), "priv"))

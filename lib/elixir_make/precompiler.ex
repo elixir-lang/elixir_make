@@ -56,14 +56,6 @@ defmodule ElixirMake.Precompiler do
   @callback build_native(OptionParser.argv()) :: :ok | {:ok, []} | no_return
 
   @doc """
-  This optional callback should return the precompiler's specific cache directory.
-
-  If not implemented, `ElixirMake.Artefact.cache_dir()` will be used as the default value.
-
-  """
-  @callback cache_dir() :: String.t()
-
-  @doc """
   This callback should precompile the library to the given target(s).
 
   Returns `:ok` if the requested target has successfully compiled.
@@ -79,7 +71,7 @@ defmodule ElixirMake.Precompiler do
   """
   @callback post_precompile() :: :ok
 
-  @optional_callbacks post_precompile: 0, cache_dir: 0
+  @optional_callbacks post_precompile: 0
 
   @doc """
   Returns user cache directory.
