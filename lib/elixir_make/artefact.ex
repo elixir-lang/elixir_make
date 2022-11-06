@@ -167,7 +167,7 @@ defmodule ElixirMake.Artefact do
     file = checksum_file()
 
     pairs =
-      for %{path: path, checksum: checksum, checksum_algo: algo} <-
+      for {_target, %{path: path, checksum: checksum, checksum_algo: algo}} <-
             precompiled_artefacts,
           into: %{} do
         basename = Path.basename(path)
