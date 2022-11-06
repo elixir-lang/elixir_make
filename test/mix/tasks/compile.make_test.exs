@@ -342,7 +342,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
       \ttouch #{exclude_this_path}
       \tmkdir -p #{lib_dir_path}
       \ttouch #{Path.join(lib_dir_path, "keep")}
-      \tln -s #{lib_dir_path} #{symlink_to_lib_dir_path}
+      \tln -s lib #{symlink_to_lib_dir_path}
       """)
 
       with_project_config(precompile_config, fn ->
@@ -366,6 +366,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
           "./cache/my_app-nif-#{ElixirMake.Precompiler.current_nif_version()}-target-1.0.0.tar.gz"
 
         extract_to = "./cache/priv"
+        File.rm_rf(extract_to)
         :erl_tar.extract(precompiled_tar_file, [:compressed, {:cwd, extract_to}])
 
         build_file_path = Path.join([extract_to, build_file])
