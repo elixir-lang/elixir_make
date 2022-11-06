@@ -32,7 +32,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
             {:error, msg} -> Mix.raise(msg)
           end
 
-        {target, %{path: archived_filename, checksum_algo: checksum_algo, checksum: checksum}}
+        %{path: archived_filename, checksum_algo: checksum_algo, checksum: checksum}
       end)
 
     Artefact.write_checksum!(precompiled_artefacts)
