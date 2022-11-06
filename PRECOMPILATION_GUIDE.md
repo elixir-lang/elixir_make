@@ -390,12 +390,15 @@ defmodule CCPrecompiler do
       }
     }
   }
+
   @user_config Application.compile_env(Mix.Project.config[:app], :cc_precompile)
   @compilers Access.get(@user_config, :compilers, @default_compilers)
   @compilers_current_os Access.get(@compilers, :os.type(), %{})
+
   @impl ElixirMake.Precompiler
   def current_target do
     current_target_user_overwrite = Access.get(@user_config, :current_target)
+
     if current_target_user_overwrite do
       # overwrite current target triplet
       {:ok, current_target_user_overwrite}
@@ -403,9 +406,11 @@ defmodule CCPrecompiler do
       # get current target triplet from `:erlang.system_info/1`
       system_architecture = to_string(:erlang.system_info(:system_architecture))
       current = String.split(system_architecture, "-", trim: true)
+
       case length(current) do
         4 ->
           {:ok, "#{Enum.at(current, 0)}-#{Enum.at(current, 2)}-#{Enum.at(current, 3)}"}
+
         3 ->
           case :os.type() do
             {:unix, :darwin} ->
@@ -416,9 +421,11 @@ defmodule CCPrecompiler do
               else
                 {:ok, system_architecture}
               end
+
             _ ->
               {:ok, system_architecture}
           end
+
         _ ->
           {:error, "cannot decide current target"}
       end
@@ -452,7 +459,7 @@ defmodule CCPrecompiler do
     @compilers_current_os
     |> Map.keys()
     |> Enum.map(&find_available_compilers(&1, Map.get(@compilers_current_os, &1)))
-    |> Enum.reject(fn x -> x == nil end)
+    |> Enum.reject(&is_nil/1)
   end
 
   defp find_available_compilers(triplet, compilers) when is_tuple(compilers) do
@@ -491,16 +498,6 @@ defmodule CCPrecompiler do
   end
 
   @impl ElixirMake.Precompiler
-  def cache_dir() do
-    # in this optional callback we can return a custom cache directory
-    # for this precompiler module, this can be useful
-    #   - if you'd prefer to save artefacts in some global location
-    #   - if you'd like to having a user customisable option such as
-    #     `cc_precompiler_cache_dir`
-    ElixirMake.Precompiler.cache_dir()
-  end
-
-  @impl ElixirMake.Precompiler
   def precompile(args, target) do
     # Potentially clean the output directory to avoid conflicts
     File.rm!(Path.join(Mix.Project.app_path(), "priv"))
@@ -516,7 +513,7 @@ defmodule CCPrecompiler do
     System.put_env("CXX", cxx)
     System.put_env("CPP", cxx)
 
-    ElixirMake.Precompiler.compile(args)
+    ElixirMake.Precompiler.mix_compile(args)
 
     System.put_env("CC", saved_cc)
     System.put_env("CXX", saved_cxx)

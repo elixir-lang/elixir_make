@@ -56,14 +56,6 @@ defmodule ElixirMake.Precompiler do
   @callback build_native(OptionParser.argv()) :: :ok | {:ok, []} | no_return
 
   @doc """
-  This optional callback should return the precompiler's specific cache directory.
-
-  If not implemented, `ElixirMake.Artefact.cache_dir()` will be used as the default value.
-
-  """
-  @callback cache_dir() :: String.t()
-
-  @doc """
   This callback should precompile the library to the given target(s).
 
   Returns `:ok` if the requested target has successfully compiled.
@@ -79,70 +71,12 @@ defmodule ElixirMake.Precompiler do
   """
   @callback post_precompile() :: :ok
 
-  @optional_callbacks post_precompile: 0, cache_dir: 0
-
-  @doc """
-  Returns user cache directory.
-  """
-  def cache_dir(sub_dir \\ "") do
-    cache_opts = if System.get_env("MIX_XDG"), do: %{os: :linux}, else: %{}
-    cache_dir = :filename.basedir(:user_cache, "", cache_opts)
-    cache_dir = System.get_env("ELIXIR_MAKE_CACHE_DIR", cache_dir) |> Path.join(sub_dir)
-    File.mkdir_p!(cache_dir)
-    cache_dir
-  end
-
-  @doc """
-  Returns the current nif version as a string.
-  """
-  def current_nif_version do
-    :erlang.system_info(:nif_version) |> List.to_string()
-  end
+  @optional_callbacks post_precompile: 0
 
   @doc """
   Invoke the regular Mix toolchain compilation.
   """
   def mix_compile(args) do
     ElixirMake.Compiler.compile(args)
-  end
-
-  @doc """
-  Returns path to the priv directory of the given app.
-  """
-  def app_priv(app) when is_atom(app) do
-    build_path = Mix.Project.build_path()
-    Path.join([build_path, "lib", "#{app}", "priv"])
-  end
-
-  @doc """
-  Returns the filename of the precompiled tar archive.
-  """
-  def archive_filename(app, version, nif_version, target) do
-    "#{app}-nif-#{nif_version}-#{target}-#{version}.tar.gz"
-  end
-
-  @doc """
-  Create precompiled tar archive file.
-  """
-  def create_precompiled_archive(app, version, nif_version, target, cache_dir, paths) do
-    app_priv = ElixirMake.Precompiler.app_priv(app)
-
-    archived_filename = ElixirMake.Precompiler.archive_filename(app, version, nif_version, target)
-    archive_full_path = Path.expand(Path.join([cache_dir, archived_filename]))
-    File.mkdir_p!(cache_dir)
-    Logger.debug("Creating precompiled archive: #{archive_full_path}")
-    Logger.debug("Paths to compress in priv directory: #{inspect(paths)}")
-
-    filepaths =
-      for include <- paths,
-          file <- Path.wildcard(Path.join(app_priv, include)),
-          do: {file |> Path.relative_to(app_priv) |> String.to_charlist(), File.read!(file)}
-
-    :ok = :erl_tar.create(archive_full_path, filepaths, [:compressed])
-
-    {:ok, algo, checksum} =
-      ElixirMake.Artefact.compute_checksum(archive_full_path, ElixirMake.Artefact.checksum_algo())
-
-    {archive_full_path, archived_filename, algo, checksum}
   end
 end

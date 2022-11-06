@@ -110,7 +110,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   """
 
   use Mix.Task
-  alias ElixirMake.{Artefact, Precompiler}
+  alias ElixirMake.Artefact
 
   def run(args) do
     config = Mix.Project.config()
@@ -128,16 +128,16 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
       true ->
         nif_filename = config[:make_nif_filename] || "#{app}"
-        priv_dir = ElixirMake.Precompiler.app_priv(app)
+        app_priv = Path.join(Mix.Project.app_path(config), "priv")
 
         load_path =
           case :os.type() do
-            {:win32, _} -> Path.join([priv_dir, "#{nif_filename}.dll"])
-            _ -> Path.join([priv_dir, "#{nif_filename}.so"])
+            {:win32, _} -> Path.join(app_priv, "#{nif_filename}.dll")
+            _ -> Path.join(app_priv, "#{nif_filename}.so")
           end
 
         with false <- File.exists?(load_path),
-             {:error, precomp_error} <- download_or_reuse_nif(precompiler) do
+             {:error, precomp_error} <- download_or_reuse_nif(config, precompiler, app_priv) do
           Mix.shell().error("""
           Error happened while installing #{app} from precompiled binary: #{precomp_error}.
 
@@ -169,33 +169,25 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     "dev" in Version.parse!(version).pre
   end
 
-  defp download_or_reuse_nif(precompiler) do
-    config = Mix.Project.config()
-    app = config[:app]
-
-    case Artefact.current_target_nif_url(precompiler) do
+  defp download_or_reuse_nif(config, precompiler, app_priv) do
+    case Artefact.current_target_nif_url(config, precompiler) do
       {:ok, target, url} ->
-        cache_dir = Precompiler.cache_dir()
+        archived_fullpath = Artefact.archive_fullpath(config, target)
 
-        version = config[:version]
-        nif_version = Precompiler.current_nif_version()
-        archived_filename = Precompiler.archive_filename(app, version, nif_version, target)
+        unless File.exists?(archived_fullpath) do
+          Mix.shell().info("Downloading precompiled NIF to #{archived_fullpath}")
 
-        app_priv = Precompiler.app_priv(app)
-        archived_fullpath = Path.join([cache_dir, archived_filename])
-
-        with false <- File.exists?(archived_fullpath),
-             :ok <- File.mkdir_p(cache_dir),
-             {:ok, archived_data} <- Artefact.download_nif_artefact(url),
-             :ok <- File.write(archived_fullpath, archived_data) do
-          Mix.shell().info("NIF cached at #{archived_fullpath} and extracted to #{app_priv}")
+          with {:ok, archived_data} <- Artefact.download_nif_artefact(url) do
+            File.mkdir_p(Path.dirname(archived_fullpath))
+            File.write(archived_fullpath, archived_data)
+          end
         end
 
         case File.exists?(archived_fullpath) do
           true ->
-            case Artefact.check_file_integrity(archived_fullpath, app) do
+            case Artefact.check_file_integrity(archived_fullpath) do
               :ok ->
-                case Artefact.restore_nif_file(archived_fullpath, app) do
+                case Artefact.restore_nif_file(archived_fullpath, app_priv) do
                   :ok ->
                     :ok
 

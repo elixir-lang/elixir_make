@@ -329,7 +329,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
 
       File.mkdir!("priv")
       priv_dir = "./_build/test/lib/my_app/priv"
-      build_file_path = Path.join([priv_dir, build_file])
+      build_file_path = Path.join(priv_dir, build_file)
       include_this_path = Enum.map(include_this, fn file -> Path.join([priv_dir, file]) end)
       exclude_this_path = Path.join([priv_dir, "exclude_this"])
 
@@ -354,14 +354,14 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
         assert File.exists?(exclude_this_path)
 
         precompiled_tar_file =
-          "./cache/my_app-nif-#{ElixirMake.Precompiler.current_nif_version()}-target-1.0.0.tar.gz"
+          "./cache/my_app-nif-#{:erlang.system_info(:nif_version)}-target-1.0.0.tar.gz"
 
         extract_to = "./cache/priv"
         :erl_tar.extract(precompiled_tar_file, [:compressed, {:cwd, extract_to}])
 
-        build_file_path = Path.join([extract_to, build_file])
+        build_file_path = Path.join(extract_to, build_file)
         include_this_path = Enum.map(include_this, fn file -> Path.join([extract_to, file]) end)
-        exclude_this_path = Path.join([extract_to, "exclude_this"])
+        exclude_this_path = Path.join(extract_to, "exclude_this")
 
         assert File.exists?(build_file_path)
         assert Enum.all?(include_this_path, &File.exists?/1)

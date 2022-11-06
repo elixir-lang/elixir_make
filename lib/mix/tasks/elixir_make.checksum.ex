@@ -42,10 +42,10 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
     urls =
       cond do
         Keyword.get(options, :all) ->
-          ElixirMake.Artefact.available_nif_urls(precompiler)
+          ElixirMake.Artefact.available_nif_urls(config, precompiler)
 
         Keyword.get(options, :only_local) ->
-          case ElixirMake.Artefact.current_target_nif_url(precompiler) do
+          case ElixirMake.Artefact.current_target_nif_url(config, precompiler) do
             {:ok, target, url} -> [{target, url}]
             {:error, error} -> Mix.raise(error)
           end
@@ -64,6 +64,6 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
       |> IO.puts()
     end
 
-    ElixirMake.Artefact.write_checksum!(config[:app], result)
+    ElixirMake.Artefact.write_checksum!(result)
   end
 end

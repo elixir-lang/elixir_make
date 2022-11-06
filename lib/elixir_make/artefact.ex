@@ -4,7 +4,24 @@ defmodule ElixirMake.Artefact do
 
   @checksum_algo :sha256
   @checksum_algorithms [@checksum_algo]
+
+  @doc """
+  The checksum algorithm used.
+  """
   def checksum_algo, do: @checksum_algo
+
+  @doc """
+  Returns user cache directory.
+  """
+  def cache_dir(sub_dir \\ "") do
+    cache_opts = if System.get_env("MIX_XDG"), do: %{os: :linux}, else: %{}
+    cache_dir = :filename.basedir(:user_cache, "", cache_opts)
+    cache_dir = System.get_env("ELIXIR_MAKE_CACHE_DIR", cache_dir) |> Path.join(sub_dir)
+    File.mkdir_p!(cache_dir)
+    cache_dir
+  end
+
+  ## TODO
 
   def compute_checksum(file_path, algo) do
     case File.read(file_path) do
@@ -51,7 +68,7 @@ defmodule ElixirMake.Artefact do
         ordered: false
       )
 
-    cache_dir = ElixirMake.Precompiler.cache_dir()
+    cache_dir = cache_dir()
 
     Enum.flat_map(tasks, fn {:ok, {url, download}} ->
       case download do
@@ -92,20 +109,20 @@ defmodule ElixirMake.Artefact do
     |> List.last()
   end
 
-  defp checksum_map(app) when is_atom(app) do
-    checksum_file(app)
+  defp checksum_map() do
+    checksum_file()
     |> read_map_from_file()
   end
 
-  def check_file_integrity(file_path, app) when is_atom(app) do
-    checksum_map(app)
-    |> check_integrity_from_map(app, file_path)
+  def check_file_integrity(file_path) do
+    checksum_map()
+    |> check_integrity_from_map(file_path)
   end
 
   # It receives the map of %{ "filename" => "algo:checksum" } with the file path
   @doc false
-  def check_integrity_from_map(checksum_map, app, file_path) do
-    with {:ok, {algo, hash}} <- find_checksum(checksum_map, app, file_path),
+  def check_integrity_from_map(checksum_map, file_path) do
+    with {:ok, {algo, hash}} <- find_checksum(checksum_map, file_path),
          :ok <- validate_checksum_algo(algo) do
       compare_checksum(file_path, algo, hash)
     else
@@ -114,7 +131,7 @@ defmodule ElixirMake.Artefact do
     end
   end
 
-  defp find_checksum(checksum_map, app, file_path) do
+  defp find_checksum(checksum_map, file_path) do
     basename = Path.basename(file_path)
 
     if Enum.count(Map.keys(checksum_map)) > 0 do
@@ -127,10 +144,10 @@ defmodule ElixirMake.Artefact do
 
         :error ->
           {:error,
-           "precompiled tar file does not exist in the checksum file, `checksum-#{app}.exs`."}
+           "precompiled tar file does not exist in the checksum file, `checksum.exs`."}
       end
     else
-      {:error, "missing checksum file `checksum-#{app}.exs`"}
+      {:error, "missing checksum file `checksum.exs`"}
     end
   end
 
@@ -144,15 +161,11 @@ defmodule ElixirMake.Artefact do
     end
   end
 
-  def otp_version do
-    :erlang.system_info(:otp_release) |> List.to_integer()
-  end
-
   # Write the checksum file with all NIFs available.
   # It receives the module name and checksums.
   @doc false
-  def write_checksum!(app, precompiled_artefacts) do
-    file = checksum_file(app)
+  def write_checksum!(precompiled_artefacts) do
+    file = checksum_file()
 
     pairs =
       for %{path: path, checksum: checksum, checksum_algo: algo} <-
@@ -171,14 +184,12 @@ defmodule ElixirMake.Artefact do
     File.write!(file, ["%{\n", lines, "}\n"])
   end
 
-  defp checksum_file(app) when is_atom(app) do
-    # Saves the file in the project root.
-    Path.join(File.cwd!(), "checksum-#{to_string(app)}.exs")
+  defp checksum_file() do
+    Path.join(File.cwd!(), "checksum.exs")
   end
 
-  def restore_nif_file(cached_archive, app) do
+  def restore_nif_file(cached_archive, app_priv) do
     Logger.debug("Restore NIF for current node from: #{cached_archive}")
-    app_priv = ElixirMake.Precompiler.app_priv(app)
     :erl_tar.extract(cached_archive, [:compressed, {:cwd, app_priv}])
   end
 
@@ -202,32 +213,68 @@ defmodule ElixirMake.Artefact do
     to_string(uri)
   end
 
+  ## Precompiled archive
+
+  @doc """
+  Returns the full path to the precompiled archive.
+  """
+  def archive_fullpath(config, target) do
+    Path.join(Artefact.cache_dir(), archive_filename(config, target))
+  end
+
+  defp archive_filename(config, target) do
+    "#{config[:app]}-nif-#{:erlang.system_info(:nif_version)}-#{target}-#{config[:version]}.tar.gz"
+  end
+
+  @doc """
+  Creates the precompiled archive.
+  """
+  def create_precompiled_archive(config, target, paths) do
+    app_priv = Path.join(Mix.Project.app_path(config), "priv")
+    File.mkdir_p!(app_priv)
+
+    cache_dir = cache_dir()
+    File.mkdir_p!(cache_dir)
+
+    archive_filename = archive_filename(config, target)
+    archive_full_path = Path.expand(Path.join(cache_dir, archive_filename))
+
+    Logger.debug("Creating precompiled archive: #{archive_full_path}")
+    Logger.debug("Paths to archive from priv directory: #{inspect(paths)}")
+
+    :ok =
+      File.cd!(app_priv, fn ->
+        filepaths =
+          for path <- paths,
+              entry <- Path.wildcard(path),
+              do: String.to_charlist(entry)
+
+        :erl_tar.create(archive_full_path, filepaths, [:compressed])
+      end)
+
+    {:ok, algo, checksum} = compute_checksum(archive_full_path, checksum_algo())
+    {archive_filename, algo, checksum}
+  end
+
   ## NIF URLs
 
-  def available_nif_urls(precompiler) do
-    config = Mix.Project.config()
+  def available_nif_urls(config, precompiler) do
     targets = precompiler.all_supported_targets(:fetch)
 
     url_template =
       config[:make_precompiled_url] ||
         Mix.raise("`make_precompiled_url` is not specified in `project`")
 
-    app = config[:app]
-    version = config[:version]
-    nif_version = ElixirMake.Precompiler.current_nif_version()
-
     Enum.map(targets, fn target ->
-      archive_filename =
-        ElixirMake.Precompiler.archive_filename(app, version, nif_version, target)
-
+      archive_filename = archive_filename(config, target)
       {target, String.replace(url_template, "@{artefact_filename}", archive_filename)}
     end)
   end
 
-  def current_target_nif_url(precompiler) do
+  def current_target_nif_url(config, precompiler) do
     case precompiler.current_target() do
       {:ok, current_target} ->
-        available_urls = available_nif_urls(precompiler)
+        available_urls = available_nif_urls(config, precompiler)
 
         case List.keyfind(available_urls, current_target, 0) do
           {^current_target, download_url} ->
