@@ -187,15 +187,18 @@ defmodule ElixirMake.Artefact do
         case :erl_tar.add(archive, {filepath, String.to_charlist(file)}, []) do
           :ok ->
             :ok
+
           error ->
             error_msg = """
             Failed to add file `#{file}` to the precompiled tar archive file: #{inspect(error)}
             """
+
             Mix.shell().error(error_msg)
             raise RuntimeError, error_msg
         end
       end
     end
+
     :ok
   end
 
@@ -211,7 +214,8 @@ defmodule ElixirMake.Artefact do
     Logger.debug("Creating precompiled archive: #{archive_full_path}")
     Logger.debug("Paths to compress in priv directory: #{inspect(paths)}")
 
-    with {:open, {:ok, archive}} <- {:open, :erl_tar.open(archive_full_path, [:write, :compressed])},
+    with {:open, {:ok, archive}} <-
+           {:open, :erl_tar.open(archive_full_path, [:write, :compressed])},
          :ok <- add_to_archive(archive, paths, app_priv),
          {:close, :ok} <- {:close, :erl_tar.close(archive)} do
     else
@@ -219,6 +223,7 @@ defmodule ElixirMake.Artefact do
         error_msg = """
         Failed to #{op} the precompiled tar archive file: #{archive_full_path}, reason: #{inspect(error)}
         """
+
         Mix.shell().error(error_msg)
         raise RuntimeError, error_msg
     end
