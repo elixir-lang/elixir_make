@@ -176,6 +176,29 @@ defmodule ElixirMake.Artefact do
     Path.join(File.cwd!(), "checksum-#{to_string(app)}.exs")
   end
 
+  defp add_to_archive(archive, paths, relative_to) when is_list(paths) do
+    for include <- paths,
+        file <- Path.wildcard(Path.join(relative_to, include)) do
+      filepath = file |> Path.relative_to(relative_to) |> String.to_charlist()
+
+      if File.dir?(file) do
+        add_to_archive(archive, [Path.join(include, "**")], relative_to)
+      else
+        case :erl_tar.add(archive, {filepath, String.to_charlist(file)}, []) do
+          :ok ->
+            :ok
+          error ->
+            error_msg = """
+            Failed to add file `#{file}` to the precompiled tar archive file: #{inspect(error)}
+            """
+            Mix.shell().error(error_msg)
+            raise RuntimeError, error_msg
+        end
+      end
+    end
+    :ok
+  end
+
   @doc """
   Create precompiled tar archive file.
   """
@@ -188,16 +211,17 @@ defmodule ElixirMake.Artefact do
     Logger.debug("Creating precompiled archive: #{archive_full_path}")
     Logger.debug("Paths to compress in priv directory: #{inspect(paths)}")
 
-    saved_cwd = File.cwd!()
-    File.cd!(app_priv)
-
-    filepaths =
-      Enum.reduce(paths, [], fn include, filepaths ->
-        Enum.map(Path.wildcard(include), &String.to_charlist/1) ++ filepaths
-      end)
-
-    :ok = :erl_tar.create(archive_full_path, filepaths, [:compressed])
-    File.cd!(saved_cwd)
+    with {:open, {:ok, archive}} <- {:open, :erl_tar.open(archive_full_path, [:write, :compressed])},
+         :ok <- add_to_archive(archive, paths, app_priv),
+         {:close, :ok} <- {:close, :erl_tar.close(archive)} do
+    else
+      {op, error} ->
+        error_msg = """
+        Failed to #{op} the precompiled tar archive file: #{archive_full_path}, reason: #{inspect(error)}
+        """
+        Mix.shell().error(error_msg)
+        raise RuntimeError, error_msg
+    end
 
     {:ok, algo, checksum} =
       ElixirMake.Artefact.compute_checksum(archive_full_path, ElixirMake.Artefact.checksum_algo())
