@@ -3,6 +3,8 @@ defmodule ElixirMake.Precompiler do
   The behaviour for precompiler modules.
   """
 
+  require Logger
+
   @typedoc """
   Target triplet.
   """
@@ -102,5 +104,49 @@ defmodule ElixirMake.Precompiler do
   """
   def mix_compile(args) do
     ElixirMake.Compiler.compile(args)
+  end
+
+  @doc """
+  Returns path to the priv directory of the given app.
+  """
+  def app_priv(app) when is_atom(app) do
+    build_path = Mix.Project.build_path()
+    Path.join([build_path, "lib", "#{app}", "priv"])
+  end
+
+  @doc """
+  Returns the filename of the precompiled tar archive.
+  """
+  def archive_filename(app, version, nif_version, target) do
+    "#{app}-nif-#{nif_version}-#{target}-#{version}.tar.gz"
+  end
+
+  @doc """
+  Create precompiled tar archive file.
+  """
+  def create_precompiled_archive(app, version, nif_version, target, cache_dir, paths) do
+    app_priv = ElixirMake.Precompiler.app_priv(app)
+
+    archived_filename = ElixirMake.Precompiler.archive_filename(app, version, nif_version, target)
+    archive_full_path = Path.expand(Path.join([cache_dir, archived_filename]))
+    File.mkdir_p!(cache_dir)
+    Logger.debug("Creating precompiled archive: #{archive_full_path}")
+    Logger.debug("Paths to compress in priv directory: #{inspect(paths)}")
+
+    saved_cwd = File.cwd!()
+    File.cd!(app_priv)
+
+    filepaths =
+      Enum.reduce(paths, [], fn include, filepaths ->
+        Enum.map(Path.wildcard(include), &to_charlist/1) ++ filepaths
+      end)
+
+    :ok = :erl_tar.create(archive_full_path, filepaths, [:compressed])
+    File.cd!(saved_cwd)
+
+    {:ok, algo, checksum} =
+      ElixirMake.Artefact.compute_checksum(archive_full_path, ElixirMake.Artefact.checksum_algo())
+
+    {archive_full_path, archived_filename, algo, checksum}
   end
 end

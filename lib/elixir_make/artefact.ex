@@ -72,7 +72,12 @@ defmodule ElixirMake.Artefact do
             Logger.info("Skipped unavailable NIF artifact. Reason: #{inspect(result)}")
             []
           else
-            raise "could not finish the download of NIF artifacts. Reason: #{inspect(result)}"
+            # Only `raise` is not enough because if the library is used as a dependency in an app
+            # the user won't see the error message but only
+            #   `could not compile dependency :some_app, "mix compile" failed. Errors may have been logged above.`
+            # So we have to explicitly log the error message
+            msg = "could not finish the download of NIF artifacts. Reason: #{inspect(result)}"
+            Logger.error(msg)
           end
       end
     end)
@@ -93,35 +98,38 @@ defmodule ElixirMake.Artefact do
 
   def check_file_integrity(file_path, app) when is_atom(app) do
     checksum_map(app)
-    |> check_integrity_from_map(file_path)
+    |> check_integrity_from_map(app, file_path)
   end
 
   # It receives the map of %{ "filename" => "algo:checksum" } with the file path
   @doc false
-  def check_integrity_from_map(checksum_map, file_path) do
-    with {:ok, {algo, hash}} <- find_checksum(checksum_map, file_path),
+  def check_integrity_from_map(checksum_map, app, file_path) do
+    with {:ok, {algo, hash}} <- find_checksum(checksum_map, app, file_path),
          :ok <- validate_checksum_algo(algo) do
       compare_checksum(file_path, algo, hash)
+    else
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
-  defp find_checksum(checksum_map, file_path) do
+  defp find_checksum(checksum_map, app, file_path) do
     basename = Path.basename(file_path)
 
-    case Map.fetch(checksum_map, basename) do
-      {:ok, algo_with_hash} ->
-        [algo, hash] = String.split(algo_with_hash, ":")
-        algo = String.to_existing_atom(algo)
+    if Enum.count(Map.keys(checksum_map)) > 0 do
+      case Map.fetch(checksum_map, basename) do
+        {:ok, algo_with_hash} ->
+          [algo, hash] = String.split(algo_with_hash, ":")
+          algo = String.to_existing_atom(algo)
 
-        {:ok, {algo, hash}}
+          {:ok, {algo, hash}}
 
-      :error ->
-        # TODO: This advice is unfortunately incorrect. We can't use `mix elixir_make.checksum app`
-        # to compile a dependency. I think in this case we need to provide a escape hatch for a parent
-        # project to force a dependency to be compiled natively.
-        {:error,
-         "the precompiled NIF file does not exist in the checksum file. " <>
-           "Please consider run: `mix elixir_make.checksum #{Mix.Project.config()[:app]} --only-local` to generate the checksum file."}
+        :error ->
+          {:error,
+           "precompiled tar file does not exist in the checksum file, `checksum-#{app}.exs`."}
+      end
+    else
+      {:error, "missing checksum file `checksum-#{app}.exs`"}
     end
   end
 
@@ -167,113 +175,10 @@ defmodule ElixirMake.Artefact do
     Path.join(File.cwd!(), "checksum-#{to_string(app)}.exs")
   end
 
-  def create_precompiled_archive(app, version, nif_version, target, cache_dir) do
-    saved_cwd = File.cwd!()
-
-    # TODO: There is no need to traverse symlinks
-    # TODO: Skip the need for `File.cd!(app_priv)`
-    app_priv = app_priv(app)
-    File.cd!(app_priv)
-
-    archived_filename = archive_filename(app, version, nif_version, target)
-    archive_full_path = Path.expand(Path.join([cache_dir, archived_filename]))
-    File.mkdir_p!(cache_dir)
-    Logger.debug("Creating precompiled archive: #{archive_full_path}")
-
-    filelist = build_file_list_at(app_priv)
-    File.cd!(app_priv)
-    :ok = :erl_tar.create(archive_full_path, filelist, [:compressed])
-
-    File.cd!(saved_cwd)
-
-    {:ok, algo, checksum} =
-      ElixirMake.Artefact.compute_checksum(archive_full_path, ElixirMake.Artefact.checksum_algo())
-
-    {archive_full_path, archived_filename, algo, checksum}
-  end
-
-  def archive_filename(app, version, nif_version, target) do
-    "#{app}-nif-#{nif_version}-#{target}-#{version}.tar.gz"
-  end
-
-  defp build_file_list_at(dir) do
-    saved_cwd = File.cwd!()
-    File.cd!(dir)
-    {filelist, _} = build_file_list_at(".", %{}, [])
-    File.cd!(saved_cwd)
-    Enum.map(filelist, &to_charlist/1)
-  end
-
-  defp build_file_list_at(dir, visited, filelist) do
-    visited? = Map.get(visited, dir)
-
-    if visited? do
-      {filelist, visited}
-    else
-      visited = Map.put(visited, dir, true)
-      saved_cwd = File.cwd!()
-
-      case {File.dir?(dir), File.read_link(dir)} do
-        {true, {:error, _}} ->
-          File.cd!(dir)
-          cur_filelist = File.ls!()
-
-          {files, folders} =
-            Enum.reduce(cur_filelist, {[], []}, fn filepath, {files, folders} ->
-              if File.dir?(filepath) do
-                symlink_dir? = Path.join([File.cwd!(), filepath])
-
-                case File.read_link(symlink_dir?) do
-                  {:error, _} ->
-                    {files, [filepath | folders]}
-
-                  {:ok, _} ->
-                    {[Path.join([dir, filepath]) | files], folders}
-                end
-              else
-                {[Path.join([dir, filepath]) | files], folders}
-              end
-            end)
-
-          File.cd!(saved_cwd)
-
-          filelist = files ++ filelist ++ [dir]
-
-          {files_in_folder, visited} =
-            Enum.reduce(folders, {[], visited}, fn folder_path, {files_in_folder, visited} ->
-              {filelist, visited} =
-                build_file_list_at(Path.join([dir, folder_path]), visited, files_in_folder)
-
-              {files_in_folder ++ filelist, visited}
-            end)
-
-          filelist = filelist ++ files_in_folder
-          {filelist, visited}
-
-        _ ->
-          {filelist, visited}
-      end
-    end
-  end
-
-  def app_priv(app) when is_atom(app) do
-    build_path = Mix.Project.build_path()
-    Path.join([build_path, "lib", "#{app}", "priv"])
-  end
-
-  def make_priv_dir(app, :clean) when is_atom(app) do
-    app_priv = app_priv(app)
-    File.rm_rf!(app_priv)
-    make_priv_dir(app)
-  end
-
-  def make_priv_dir(app) when is_atom(app) do
-    File.mkdir_p!(app_priv(app))
-  end
-
   def restore_nif_file(cached_archive, app) do
     Logger.debug("Restore NIF for current node from: #{cached_archive}")
-    :erl_tar.extract(cached_archive, [:compressed, {:cwd, to_string(app_priv(app))}])
+    app_priv = ElixirMake.Precompiler.app_priv(app)
+    :erl_tar.extract(cached_archive, [:compressed, {:cwd, app_priv}])
   end
 
   defp read_map_from_file(file) do
@@ -285,27 +190,6 @@ defmodule ElixirMake.Artefact do
     end
   end
 
-  def write_metadata(app, metadata) do
-    metadata_file = metadata_file(app)
-    Logger.debug("metadata_file: #{inspect(metadata_file)}")
-    existing = read_map_from_file(metadata_file)
-
-    unless Map.equal?(metadata, existing) do
-      dir = Path.dirname(metadata_file)
-      :ok = File.mkdir_p(dir)
-
-      File.write!(metadata_file, inspect(metadata, limit: :infinity, pretty: true))
-    end
-
-    :ok
-  end
-
-  defp metadata_file(app) do
-    ElixirMake.Precompiler.cache_dir()
-    |> Path.join("metadata")
-    |> Path.join("metadata-#{app}.exs")
-  end
-
   def archive_file_url(base_url, file_name) do
     uri = URI.parse(base_url)
 
@@ -315,15 +199,6 @@ defmodule ElixirMake.Artefact do
       end)
 
     to_string(uri)
-  end
-
-  # TODO: Remove metadata functions
-  def metadata(app) do
-    Logger.debug("app: #{inspect(metadata_file(app))}")
-
-    app
-    |> metadata_file()
-    |> read_map_from_file()
   end
 
   ## NIF URLs
@@ -341,7 +216,9 @@ defmodule ElixirMake.Artefact do
     nif_version = ElixirMake.Precompiler.current_nif_version()
 
     Enum.map(targets, fn target ->
-      archive_filename = archive_filename(app, version, nif_version, target)
+      archive_filename =
+        ElixirMake.Precompiler.archive_filename(app, version, nif_version, target)
+
       {target, String.replace(url_template, "@{artefact_filename}", archive_filename)}
     end)
   end
@@ -415,50 +292,60 @@ defmodule ElixirMake.Artefact do
 
   # https_opts and related code are taken from
   # https://github.com/elixir-cldr/cldr_utils/blob/master/lib/cldr/http/http.ex
-  @certificate_locations [
-                           # Configured cacertfile
-                           System.get_env("ELIXIR_MAKE_CACERT"),
+  @certificate_locations ([
+                            # Configured cacertfile
+                            System.get_env("ELIXIR_MAKE_CACERT")
+                          ] ++
+                            (if function_exported?(Mix.ProjectStack, :project_file, 0) do
+                               [
+                                 # A little hack to use cacerts.pem in CAStore
+                                 Path.join([
+                                   Path.dirname(Mix.ProjectStack.project_file()),
+                                   "deps/castore/priv/cacerts.pem"
+                                 ]),
 
-                           # Populated if hex package CAStore is configured
-                           if(Code.ensure_loaded?(CAStore), do: CAStore.file_path()),
+                                 # A little hack to use cacerts.pem in :certifi
+                                 Path.join([
+                                   Path.dirname(Mix.ProjectStack.project_file()),
+                                   "deps/certifi/priv/cacerts.pem"
+                                 ])
+                               ]
+                             else
+                               []
+                             end) ++
+                            [
+                              # Debian/Ubuntu/Gentoo etc.
+                              "/etc/ssl/certs/ca-certificates.crt",
 
-                           # Populated if hex package certfi is configured
-                           if(Code.ensure_loaded?(:certifi),
-                             do: :certifi.cacertfile() |> List.to_string()
-                           ),
+                              # Fedora/RHEL 6
+                              "/etc/pki/tls/certs/ca-bundle.crt",
 
-                           # Debian/Ubuntu/Gentoo etc.
-                           "/etc/ssl/certs/ca-certificates.crt",
+                              # OpenSUSE
+                              "/etc/ssl/ca-bundle.pem",
 
-                           # Fedora/RHEL 6
-                           "/etc/pki/tls/certs/ca-bundle.crt",
+                              # OpenELEC
+                              "/etc/pki/tls/cacert.pem",
 
-                           # OpenSUSE
-                           "/etc/ssl/ca-bundle.pem",
+                              # CentOS/RHEL 7
+                              "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
 
-                           # OpenELEC
-                           "/etc/pki/tls/cacert.pem",
+                              # Open SSL on MacOS
+                              "/usr/local/etc/openssl/cert.pem",
 
-                           # CentOS/RHEL 7
-                           "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
-
-                           # Open SSL on MacOS
-                           "/usr/local/etc/openssl/cert.pem",
-
-                           # MacOS & Alpine Linux
-                           "/etc/ssl/cert.pem"
-                         ]
+                              # MacOS & Alpine Linux
+                              "/etc/ssl/cert.pem"
+                            ])
                          |> Enum.reject(&is_nil/1)
 
   defp certificate_store do
     @certificate_locations
     |> Enum.find(&File.exists?/1)
-    |> raise_if_no_cacertfile!
+    |> warning_if_no_cacertfile!
     |> :erlang.binary_to_list()
   end
 
-  defp raise_if_no_cacertfile!(nil) do
-    raise RuntimeError, """
+  defp warning_if_no_cacertfile!(nil) do
+    Logger.warning("""
     No certificate trust store was found.
 
     Tried looking for: #{inspect(@certificate_locations)}
@@ -476,15 +363,15 @@ defmodule ElixirMake.Artefact do
        be automatically detected after recompilation.
 
     3. Specify the location of a certificate trust store
-       by configuring it in `config.exs`:
+       by configuring it in environment variable:
 
-         config :elixir_make,
-           cacertfile: "/path/to/cacertfile",
-           ...
-    """
+         export ELIXIR_MAKE_CACERT="/path/to/cacerts.pem"
+    """)
+
+    ""
   end
 
-  defp raise_if_no_cacertfile!(file) do
+  defp warning_if_no_cacertfile!(file) do
     file
   end
 end

@@ -15,11 +15,12 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   def run(args) do
     config = Mix.Project.config()
     app = config[:app]
+    paths = config[:make_precompiler_priv_paths] || ["."]
     version = config[:version]
     nif_version = Precompiler.current_nif_version()
 
     precompiler =
-      config[:precompiler] ||
+      config[:make_precompiler] ||
         Mix.raise(
           ":make_precompiler project configuration is required when using elixir_make.precompile"
         )
@@ -38,7 +39,14 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
         {_archive_full_path, archived_filename, checksum_algo, checksum} =
           case precompiler.precompile(args, target) do
             :ok ->
-              Artefact.create_precompiled_archive(app, version, nif_version, target, cache_dir)
+              Precompiler.create_precompiled_archive(
+                app,
+                version,
+                nif_version,
+                target,
+                cache_dir,
+                paths
+              )
 
             {:error, msg} ->
               Mix.raise(msg)
@@ -56,7 +64,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
     end
 
     with {:ok, target} <- precompiler.current_target() do
-      archived_filename = Artefact.archive_filename(app, version, nif_version, target)
+      archived_filename = Precompiler.archive_filename(app, version, nif_version, target)
       archived_fullpath = Path.join([cache_dir, archived_filename])
       Artefact.restore_nif_file(archived_fullpath, app)
     end

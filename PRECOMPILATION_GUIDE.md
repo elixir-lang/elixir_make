@@ -38,6 +38,7 @@ def project do
     make_precompiler: CCPrecompiler,
     make_precompiled_url: "https://github.com/cocoa-xu/cc_precompiler_example/releases/download/v#{@version}/@{artefact_filename}",
     make_nif_filename: "nif",
+    make_precompiler_priv_paths: ["nif.*"]
     # ...
   ]
 end
@@ -48,6 +49,49 @@ Another required field is `make_precompiled_url`. It is a URL template to the ar
 `@{artefact_filename}` in the URL template string will be replaced by corresponding artefact filenames when fetching them. For example, `cc_precompiler_example-nif-2.16-x86_64-linux-gnu-0.1.0.tar.gz`.
 
 Note that there is an optional config key for elixir_make, `make_nif_filename`. If the name (file extension does not count) of the shared library is different from your app's name, then `make_nif_filename` should be set. For example, if the app name is `"cc_precompiler_example"` while the name shared library is `"nif.so"` (or `"nif.dll"` on windows), then `make_nif_filename` should be set as `"nif"`.
+
+Another optional config key is `make_precompiler_priv_paths`. For example, say the `priv` directory is organised as follows in Linux, macOS and Windows respectively,
+
+```
+# Linux
+.
+├── assets
+│   ├── model.onnx
+│   └── data.json
+├── lib
+│   ├── libpriv1.so
+│   ├── libpriv2.so
+│   └── libpriv3.so
+└── nif.so
+
+# macOS
+.
+├── assets
+│   ├── model.onnx
+│   └── data.json
+├── lib
+│   ├── libpriv1.dylib
+│   ├── libpriv2.dylib
+│   └── libpriv3.dylib
+└── nif.so
+
+# Windows
+.
+├── assets
+│   ├── model.onnx
+│   └── data.json
+├── lib
+│   ├── libpriv1.dll
+│   ├── libpriv2.dll
+│   └── libpriv3.dll
+└── nif.dll
+```
+
+By default, everything in `priv` will be included in the precompiled tar file. However, files in `assets` can be very large or platform-independent, therefore, we would like to only include the `nif.so` (`nif.dll`) file and everything in the `lib` directory in the precompiled tar file to reduce the footprint. In this case, we can set `make_precompiler_priv_paths` to `["nif.so", "nif.dll", "lib"]`.
+
+Of course, wildcards (`?`, `**`, `*`) are supported when specifiying files. For example, `["nif.*", "lib/*.so", "lib/*.dll", "lib/*.dylib"]` will include `nif.so` (Linux/macOS) or `nif.dll` (Windows), and `.so` or `.dll` files in the `lib` directory. 
+
+Directory structures and symbolic links are preserved.
 
 ### (Optional) Test the NIF code locally
 
@@ -492,31 +536,10 @@ defmodule CCPrecompiler do
 
   @impl ElixirMake.Precompiler
   def post_precompile() do
-    write_metadata_to_file()
-  end
-
-  defp write_metadata_to_file() do
-    app = Mix.Project.config()[:app]
-    version = Mix.Project.config()[:version]
-    nif_version = ElixirMake.Precompiler.current_nif_version()
-    cache_dir = ElixirMake.Precompiler.cache_dir()
-
-    with {:ok, target} <- current_target() do
-      archived_artefact_file =
-        ElixirMake.Artefact.archive_filename(app, version, nif_version, target)
-
-      metadata = %{
-        app: app,
-        cached_tar_gz: Path.join([cache_dir, archived_artefact_file]),
-        target: target,
-        targets: all_supported_targets(:fetch),
-        version: version
-      }
-
-      ElixirMake.Artefact.write_metadata(app, metadata)
-    end
-
-    :ok
+    # It's possible to do some post precompilation work
+    # in this optionall callback
+    # after all precompile targets are compiled.
+    Logger.debug("Post precompile")
   end
 end
 ```
