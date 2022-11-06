@@ -1,4 +1,5 @@
 defmodule ElixirMake.Artefact do
+  @moduledoc false
   require Logger
 
   @checksum_algo :sha256
