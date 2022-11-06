@@ -50,7 +50,7 @@ Another required field is `make_precompiled_url`. It is a URL template to the ar
 
 Note that there is an optional config key for elixir_make, `make_nif_filename`. If the name (file extension does not count) of the shared library is different from your app's name, then `make_nif_filename` should be set. For example, if the app name is `"cc_precompiler_example"` while the name shared library is `"nif.so"` (or `"nif.dll"` on windows), then `make_nif_filename` should be set as `"nif"`.
 
-Another optional config key is `make_precompiler_priv_paths`. For example, say the priv directory is organised as follows in Linux, macOS and Windows respectively,
+Another optional config key is `make_precompiler_priv_paths`. For example, say the `priv` directory is organised as follows in Linux, macOS and Windows respectively,
 
 ```
 # Linux
