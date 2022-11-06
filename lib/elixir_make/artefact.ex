@@ -181,21 +181,30 @@ defmodule ElixirMake.Artefact do
         file <- Path.wildcard(Path.join(relative_to, include)) do
       filepath = file |> Path.relative_to(relative_to) |> String.to_charlist()
 
-      if File.dir?(file) do
-        add_to_archive(archive, [Path.join(include, "**")], relative_to)
-      else
-        case :erl_tar.add(archive, {filepath, String.to_charlist(file)}, []) do
-          :ok ->
-            :ok
+      case {File.dir?(file), File.read_link(file)} do
+        {true, {:error, _}} ->
+          # regular dir
+          add_to_archive(archive, [Path.join(include, "**")], relative_to)
 
-          error ->
-            error_msg = """
-            Failed to add file `#{file}` to the precompiled tar archive file: #{inspect(error)}
-            """
+        {true, {:ok, _}} ->
+          # todo: handle symlink dir properly
+          IO.puts("dir #{file} is symlink, filepath=#{filepath}")
+          :erl_tar.add(archive, {filepath, String.to_charlist(file)}, [])
 
-            Mix.shell().error(error_msg)
-            raise RuntimeError, error_msg
-        end
+        {false, _} ->
+          # regular/symlink files
+          case :erl_tar.add(archive, {filepath, String.to_charlist(file)}, []) do
+            :ok ->
+              :ok
+
+            error ->
+              error_msg = """
+              Failed to add file `#{file}` to the precompiled tar archive file: #{inspect(error)}
+              """
+
+              Mix.shell().error(error_msg)
+              raise RuntimeError, error_msg
+          end
       end
     end
 
