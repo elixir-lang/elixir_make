@@ -292,55 +292,39 @@ defmodule ElixirMake.Artefact do
 
   # https_opts and related code are taken from
   # https://github.com/elixir-cldr/cldr_utils/blob/master/lib/cldr/http/http.ex
-  @certificate_locations ([
-                            # Configured cacertfile
-                            System.get_env("ELIXIR_MAKE_CACERT")
-                          ] ++
-                            (if function_exported?(Mix.ProjectStack, :project_file, 0) do
-                               [
-                                 # A little hack to use cacerts.pem in CAStore
-                                 Path.join([
-                                   Path.dirname(Mix.ProjectStack.project_file()),
-                                   "deps/castore/priv/cacerts.pem"
-                                 ]),
+  @certificate_locations [
+    # Debian/Ubuntu/Gentoo etc.
+    "/etc/ssl/certs/ca-certificates.crt",
 
-                                 # A little hack to use cacerts.pem in :certifi
-                                 Path.join([
-                                   Path.dirname(Mix.ProjectStack.project_file()),
-                                   "deps/certifi/priv/cacerts.pem"
-                                 ])
-                               ]
-                             else
-                               []
-                             end) ++
-                            [
-                              # Debian/Ubuntu/Gentoo etc.
-                              "/etc/ssl/certs/ca-certificates.crt",
+    # Fedora/RHEL 6
+    "/etc/pki/tls/certs/ca-bundle.crt",
 
-                              # Fedora/RHEL 6
-                              "/etc/pki/tls/certs/ca-bundle.crt",
+    # OpenSUSE
+    "/etc/ssl/ca-bundle.pem",
 
-                              # OpenSUSE
-                              "/etc/ssl/ca-bundle.pem",
+    # OpenELEC
+    "/etc/pki/tls/cacert.pem",
 
-                              # OpenELEC
-                              "/etc/pki/tls/cacert.pem",
+    # CentOS/RHEL 7
+    "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
 
-                              # CentOS/RHEL 7
-                              "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+    # Open SSL on MacOS
+    "/usr/local/etc/openssl/cert.pem",
 
-                              # Open SSL on MacOS
-                              "/usr/local/etc/openssl/cert.pem",
-
-                              # MacOS & Alpine Linux
-                              "/etc/ssl/cert.pem"
-                            ])
-                         |> Enum.reject(&is_nil/1)
+    # MacOS & Alpine Linux
+    "/etc/ssl/cert.pem"
+  ]
 
   defp certificate_store do
-    @certificate_locations
+    [
+      System.get_env("ELIXIR_MAKE_CACERT"),
+      Application.spec(:castore, :vsn) && Application.app_dir(:castore, "priv/cacerts.pem"),
+      Application.spec(:certifi, :vsn) && Application.app_dir(:certifi, "priv/cacerts.pem")
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Kernel.++(@certificate_locations)
     |> Enum.find(&File.exists?/1)
-    |> warning_if_no_cacertfile!
+    |> warning_if_no_cacertfile!()
     |> :erlang.binary_to_list()
   end
 
