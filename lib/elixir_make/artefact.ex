@@ -192,9 +192,9 @@ defmodule ElixirMake.Artefact do
     File.cd!(app_priv)
 
     filepaths =
-       Enum.reduce(paths, [], fn include, filepaths ->
-         Enum.map(Path.wildcard(include), &String.to_charlist/1) ++ filepaths
-       end)
+      Enum.reduce(paths, [], fn include, filepaths ->
+        Enum.map(Path.wildcard(include), &String.to_charlist/1) ++ filepaths
+      end)
 
     :ok = :erl_tar.create(archive_full_path, filepaths, [:compressed])
     File.cd!(saved_cwd)
