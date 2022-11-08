@@ -376,7 +376,7 @@ defmodule ElixirMake.Artefact do
   end
 
   defp warning_if_no_cacertfile!(nil) do
-    Logger.warning("""
+    Mix.shell().error("""
     No certificate trust store was found.
 
     Tried looking for: #{inspect(@certificate_locations)}
