@@ -14,6 +14,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   @impl true
   def run(args) do
     config = Mix.Project.config()
+    paths = config[:make_precompiler_priv_paths] || ["."]
 
     try do
       precompiler =
@@ -22,7 +23,6 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
             ":make_precompiler project configuration is required when using elixir_make.precompile"
           )
 
-      paths = config[:make_precompiler_priv_paths] || ["."]
       targets = precompiler.all_supported_targets(:compile)
 
       precompiled_artefacts =
@@ -47,7 +47,11 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
       Mix.Project.build_structure()
     after
       app_priv = Path.join(Mix.Project.app_path(config), "priv")
-      File.rm!(app_priv)
+
+      for include <- paths,
+          file <- Path.wildcard(Path.join(app_priv, include)) do
+        File.rm_rf!(file)
+      end
     end
   end
 end
