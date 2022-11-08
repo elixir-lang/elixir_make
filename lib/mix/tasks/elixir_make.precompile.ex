@@ -50,7 +50,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
 
       for include <- paths,
           file <- Path.wildcard(Path.join(app_priv, include)) do
-        File.rm_rf!(file)
+        File.rm_rf(file)
       end
     end
   end
