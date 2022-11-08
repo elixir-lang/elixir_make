@@ -356,18 +356,12 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
           Mix.Tasks.ElixirMake.Precompile.run([])
         end)
 
-        assert File.exists?(build_file_path)
-        assert Enum.all?(include_this_path, &File.exists?/1)
-        assert File.exists?(exclude_this_path)
-        assert File.dir?(lib_dir_path)
-        assert :ok == elem(File.read_link(symlink_to_lib_dir_path), 0)
-
         precompiled_tar_file =
           "./cache/my_app-nif-#{:erlang.system_info(:nif_version)}-target-1.0.0.tar.gz"
 
         extract_to = "./cache/priv"
         File.rm_rf(extract_to)
-        :erl_tar.extract(precompiled_tar_file, [:compressed, {:cwd, extract_to}])
+        :ok = :erl_tar.extract(precompiled_tar_file, [:compressed, {:cwd, extract_to}])
 
         build_file_path = Path.join([extract_to, build_file])
         include_this_path = Enum.map(include_this, fn file -> Path.join([extract_to, file]) end)
