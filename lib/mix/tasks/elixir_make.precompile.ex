@@ -43,8 +43,6 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
       else
         :ok
       end
-
-      Mix.Project.build_structure()
     after
       app_priv = Path.join(Mix.Project.app_path(config), "priv")
 
