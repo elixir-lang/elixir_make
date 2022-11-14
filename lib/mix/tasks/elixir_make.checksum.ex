@@ -99,11 +99,12 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
           if ignore_unavailable? do
             msg = "Skipped unavailable NIF artifact. Reason: #{inspect(result)}"
             Mix.shell().info(msg)
-            []
           else
             msg = "Could not finish the download of NIF artifacts. Reason: #{inspect(result)}"
             Mix.shell().error(msg)
           end
+
+          []
       end
     end)
   end
