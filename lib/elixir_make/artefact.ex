@@ -1,183 +1,52 @@
 defmodule ElixirMake.Artefact do
   @moduledoc false
+
   require Logger
+  alias ElixirMake.Artefact
 
   @checksum_algo :sha256
-  @checksum_algorithms [@checksum_algo]
-
-  @doc """
-  The checksum algorithm used.
-  """
-  def checksum_algo, do: @checksum_algo
+  defstruct [:basename, :checksum, :checksum_algo]
 
   @doc """
   Returns user cache directory.
   """
-  def cache_dir(sub_dir \\ "") do
+  def cache_dir() do
     cache_opts = if System.get_env("MIX_XDG"), do: %{os: :linux}, else: %{}
-    cache_dir = :filename.basedir(:user_cache, "", cache_opts)
-    cache_dir = System.get_env("ELIXIR_MAKE_CACHE_DIR", cache_dir) |> Path.join(sub_dir)
+
+    cache_dir =
+      Path.expand(
+        System.get_env("ELIXIR_MAKE_CACHE_DIR") ||
+          :filename.basedir(:user_cache, "", cache_opts)
+      )
+
     File.mkdir_p!(cache_dir)
     cache_dir
   end
 
-  ## TODO
-
-  def compute_checksum(file_path, algo) do
-    case File.read(file_path) do
-      {:ok, content} ->
-        file_hash =
-          algo
-          |> :crypto.hash(content)
-          |> Base.encode16(case: :lower)
-
-        {:ok, "#{algo}", "#{file_hash}"}
-
-      {:error, reason} ->
-        {:error,
-         "cannot read the file for checksum comparison: #{inspect(file_path)}. " <>
-           "Reason: #{inspect(reason)}"}
-    end
+  @doc """
+  Computes the checksum and artefact for the given contents.
+  """
+  def checksum(basename, contents) do
+    hash = :crypto.hash(@checksum_algo, contents)
+    checksum = Base.encode16(hash, case: :lower)
+    %Artefact{basename: basename, checksum: checksum, checksum_algo: @checksum_algo}
   end
 
-  def compare_checksum(file_path, algo, expected_checksum) do
-    case compute_checksum(file_path, algo) do
-      {:ok, _, ^expected_checksum} ->
-        :ok
-
-      {:ok, _, _} ->
-        {:error, "files checksum do not match"}
-
-      {:error, reason} ->
-        {:error,
-         "cannot read the file for checksum comparison: #{inspect(file_path)} (#{inspect(reason)})"}
-    end
-  end
-
-  # Download a list of files from URLs and calculate its checksum.
-  # Returns a list with details of the download and the checksum of each file.
-  @doc false
-  def download_nif_artefacts_with_checksums!(urls, options \\ []) do
-    ignore_unavailable? = Keyword.get(options, :ignore_unavailable, false)
-
-    tasks =
-      Task.async_stream(
-        urls,
-        fn {_target, url} -> {url, download_nif_artefact(url)} end,
-        timeout: :infinity,
-        ordered: false
-      )
-
-    cache_dir = cache_dir()
-
-    Enum.flat_map(tasks, fn {:ok, {url, download}} ->
-      case download do
-        {:ok, body} ->
-          hash = :crypto.hash(@checksum_algo, body)
-          path = Path.join(cache_dir, basename_from_url(url))
-          File.write!(path, body)
-
-          checksum = Base.encode16(hash, case: :lower)
-
-          Logger.debug(
-            "NIF cached at #{path} with checksum #{inspect(checksum)} (#{@checksum_algo})"
-          )
-
-          [%{url: url, path: path, checksum: checksum, checksum_algo: @checksum_algo}]
-
-        result ->
-          if ignore_unavailable? do
-            Logger.info("Skipped unavailable NIF artifact. Reason: #{inspect(result)}")
-            []
-          else
-            # Only `raise` is not enough because if the library is used as a dependency in an app
-            # the user won't see the error message but only
-            #   `could not compile dependency :some_app, "mix compile" failed. Errors may have been logged above.`
-            # So we have to explicitly log the error message
-            msg = "could not finish the download of NIF artifacts. Reason: #{inspect(result)}"
-            Logger.error(msg)
-          end
-      end
-    end)
-  end
-
-  defp basename_from_url(url) do
-    uri = URI.parse(url)
-
-    uri.path
-    |> String.split("/")
-    |> List.last()
-  end
-
-  defp checksum_map() do
-    checksum_file()
-    |> read_map_from_file()
-  end
-
-  def check_file_integrity(file_path) do
-    checksum_map()
-    |> check_integrity_from_map(file_path)
-  end
-
-  # It receives the map of %{ "filename" => "algo:checksum" } with the file path
-  @doc false
-  def check_integrity_from_map(checksum_map, file_path) do
-    with {:ok, {algo, hash}} <- find_checksum(checksum_map, file_path),
-         :ok <- validate_checksum_algo(algo) do
-      compare_checksum(file_path, algo, hash)
-    else
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
-
-  defp find_checksum(checksum_map, file_path) do
-    basename = Path.basename(file_path)
-
-    if Enum.count(Map.keys(checksum_map)) > 0 do
-      case Map.fetch(checksum_map, basename) do
-        {:ok, algo_with_hash} ->
-          [algo, hash] = String.split(algo_with_hash, ":")
-          algo = String.to_existing_atom(algo)
-
-          {:ok, {algo, hash}}
-
-        :error ->
-          {:error, "precompiled tar file does not exist in checksum.exs"}
-      end
-    else
-      {:error, "missing checksum.exs file"}
-    end
-  end
-
-  defp validate_checksum_algo(algo) do
-    if algo in @checksum_algorithms do
-      :ok
-    else
-      {:error,
-       "checksum algorithm is not supported: #{inspect(algo)}. " <>
-         "The supported ones are:\n - #{Enum.join(@checksum_algorithms, "\n - ")}"}
-    end
-  end
-
-  # Write the checksum file with all NIFs available.
-  # It receives the module name and checksums.
-  @doc false
-  def write_checksum!(precompiled_artefacts) do
+  @doc """
+  Writes checksums to disk.
+  """
+  def write_checksums!(checksums) do
     file = checksum_file()
 
     pairs =
-      for %{path: path, checksum: checksum, checksum_algo: algo} <-
-            precompiled_artefacts,
-          into: %{} do
-        basename = Path.basename(path)
-        checksum = "#{algo}:#{checksum}"
-        {basename, checksum}
-      end
+      Enum.map(checksums, fn
+        %Artefact{basename: basename, checksum: checksum, checksum_algo: algo} ->
+          {basename, "#{algo}:#{checksum}"}
+      end)
 
     lines =
       for {filename, checksum} <- Enum.sort(pairs) do
-        ~s(  "#{filename}" => #{inspect(checksum, limit: :infinity)},\n)
+        ~s(  "#{filename}" => "#{checksum}",\n)
       end
 
     File.write!(file, ["%{\n", lines, "}\n"])
@@ -187,9 +56,72 @@ defmodule ElixirMake.Artefact do
     Path.join(File.cwd!(), "checksum.exs")
   end
 
-  def restore_nif_file(cached_archive, app_priv) do
-    Logger.debug("Restore NIF for current node from: #{cached_archive}")
-    :erl_tar.extract(cached_archive, [:compressed, {:cwd, app_priv}])
+  ## Archive handling
+
+  @doc """
+  Returns the full path to the precompiled archive.
+  """
+  def archive_path(config, target) do
+    Path.join(cache_dir(), archive_filename(config, target))
+  end
+
+  defp archive_filename(config, target) do
+    "#{config[:app]}-nif-#{:erlang.system_info(:nif_version)}-#{target}-#{config[:version]}.tar.gz"
+  end
+
+  @doc """
+  Compresses the given files and computes its checksum and artefact.
+  """
+  def compress(archive_path, paths) do
+    :ok = :erl_tar.create(archive_path, paths, [:compressed])
+    checksum(Path.basename(archive_path), File.read!(archive_path))
+  end
+
+  @doc """
+  Verifies and decompresses the given `archive_path` at `app_priv`.
+  """
+  def verify_and_decompress(archive_path, app_priv) do
+    basename = Path.basename(archive_path)
+
+    case File.read(archive_path) do
+      {:ok, contents} ->
+        verify_and_decompress(basename, archive_path, contents, app_priv)
+
+      {:error, reason} ->
+        {:error,
+         "precompiled #{inspect(basename)} does not exist or cannot download: #{inspect(reason)}"}
+    end
+  end
+
+  defp verify_and_decompress(basename, archive_path, contents, app_priv) do
+    checksum_file()
+    |> read_map_from_file()
+    |> case do
+      %{^basename => algo_with_checksum} ->
+        [algo, checksum] = String.split(algo_with_checksum, ":")
+        algo = String.to_existing_atom(algo)
+
+        case checksum(basename, contents) do
+          %Artefact{checksum: ^checksum, checksum_algo: ^algo} ->
+            case :erl_tar.extract(contents, [:compressed, {:cwd, app_priv}]) do
+              :ok ->
+                :ok
+
+              {:error, term} ->
+                {:error,
+                 "cannot decompress precompiled #{inspect(archive_path)}: #{inspect(term)}"}
+            end
+
+          _ ->
+            {:error, "precompiled #{inspect(basename)} does not match its checksum"}
+        end
+
+      checksum when checksum == %{} ->
+        {:error, "missing checksum.exs file"}
+
+      _checksum ->
+        {:error, "precompiled #{inspect(basename)} does not exist in checksum.exs"}
+    end
   end
 
   defp read_map_from_file(file) do
@@ -201,62 +133,11 @@ defmodule ElixirMake.Artefact do
     end
   end
 
-  def archive_file_url(base_url, file_name) do
-    uri = URI.parse(base_url)
-
-    uri =
-      Map.update!(uri, :path, fn path ->
-        Path.join(path || "", file_name)
-      end)
-
-    to_string(uri)
-  end
-
-  ## Precompiled archive
+  ## Archive/NIF urls
 
   @doc """
-  Returns the full path to the precompiled archive.
+  Returns all available target-url pairs available.
   """
-  def archive_fullpath(config, target) do
-    Path.join(cache_dir(), archive_filename(config, target))
-  end
-
-  defp archive_filename(config, target) do
-    "#{config[:app]}-nif-#{:erlang.system_info(:nif_version)}-#{target}-#{config[:version]}.tar.gz"
-  end
-
-  @doc """
-  Creates the precompiled archive.
-  """
-  def create_precompiled_archive(config, target, paths) do
-    app_priv = Path.join(Mix.Project.app_path(config), "priv")
-    File.mkdir_p!(app_priv)
-
-    cache_dir = cache_dir()
-    File.mkdir_p!(cache_dir)
-
-    archive_filename = archive_filename(config, target)
-    archive_full_path = Path.expand(Path.join(cache_dir, archive_filename))
-
-    Logger.debug("Creating precompiled archive: #{archive_full_path}")
-    Logger.debug("Paths to archive from priv directory: #{inspect(paths)}")
-
-    :ok =
-      File.cd!(app_priv, fn ->
-        filepaths =
-          for path <- paths,
-              entry <- Path.wildcard(path),
-              do: String.to_charlist(entry)
-
-        :erl_tar.create(archive_full_path, filepaths, [:compressed])
-      end)
-
-    {:ok, algo, checksum} = compute_checksum(archive_full_path, checksum_algo())
-    {archive_filename, algo, checksum}
-  end
-
-  ## NIF URLs
-
   def available_nif_urls(config, precompiler) do
     targets = precompiler.all_supported_targets(:fetch)
 
@@ -270,6 +151,9 @@ defmodule ElixirMake.Artefact do
     end)
   end
 
+  @doc """
+  Returns the url for the current target.
+  """
   def current_target_nif_url(config, precompiler) do
     case precompiler.current_target() do
       {:ok, current_target} ->
@@ -293,23 +177,22 @@ defmodule ElixirMake.Artefact do
 
   ## Download
 
-  def download_nif_artefact(url) do
+  def download(url) do
     url_charlist = String.to_charlist(url)
-    Logger.debug("Downloading NIF from #{url}")
 
     {:ok, _} = Application.ensure_all_started(:inets)
     {:ok, _} = Application.ensure_all_started(:ssl)
     {:ok, _} = Application.ensure_all_started(:public_key)
 
     if proxy = System.get_env("HTTP_PROXY") || System.get_env("http_proxy") do
-      Logger.debug("Using HTTP_PROXY: #{proxy}")
+      Mix.shell().info("Using HTTP_PROXY: #{proxy}")
       %{host: host, port: port} = URI.parse(proxy)
 
       :httpc.set_options([{:proxy, {{String.to_charlist(host), port}, []}}])
     end
 
     if proxy = System.get_env("HTTPS_PROXY") || System.get_env("https_proxy") do
-      Logger.debug("Using HTTPS_PROXY: #{proxy}")
+      Mix.shell().info("Using HTTPS_PROXY: #{proxy}")
       %{host: host, port: port} = URI.parse(proxy)
       :httpc.set_options([{:https_proxy, {{String.to_charlist(host), port}, []}}])
     end

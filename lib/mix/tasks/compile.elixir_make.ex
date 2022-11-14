@@ -112,6 +112,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   use Mix.Task
   alias ElixirMake.Artefact
 
+  @doc false
   def run(args) do
     config = Mix.Project.config()
     app = config[:app]
@@ -151,9 +152,9 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     end
   end
 
-  # This is called by Elixir when `mix clean` is run and `:elixir_make` is in
-  # the list of compilers.
-  @spec clean :: nil | :ok
+  # This is called by Elixir when `mix clean` runs
+  # and `:elixir_make` is in the list of compilers.
+  @doc false
   def clean() do
     config = Mix.Project.config()
     {clean_targets, config} = Keyword.pop(config, :make_clean)
@@ -172,36 +173,18 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   defp download_or_reuse_nif(config, precompiler, app_priv) do
     case Artefact.current_target_nif_url(config, precompiler) do
       {:ok, target, url} ->
-        archived_fullpath = Artefact.archive_fullpath(config, target)
+        archived_fullpath = Artefact.archive_path(config, target)
 
         unless File.exists?(archived_fullpath) do
           Mix.shell().info("Downloading precompiled NIF to #{archived_fullpath}")
 
-          with {:ok, archived_data} <- Artefact.download_nif_artefact(url) do
+          with {:ok, archived_data} <- Artefact.download(url) do
             File.mkdir_p(Path.dirname(archived_fullpath))
             File.write(archived_fullpath, archived_data)
           end
         end
 
-        case File.exists?(archived_fullpath) do
-          true ->
-            case Artefact.check_file_integrity(archived_fullpath) do
-              :ok ->
-                case Artefact.restore_nif_file(archived_fullpath, app_priv) do
-                  :ok ->
-                    :ok
-
-                  {:error, term} ->
-                    {:error, "cannot restore nif from cache: #{inspect(term)}"}
-                end
-
-              {:error, reason} ->
-                {:error, "cache file integrity check failed: #{reason}"}
-            end
-
-          false ->
-            {:error, "precompiled tar file does not exist or cannot download"}
-        end
+        Artefact.verify_and_decompress(archived_fullpath, app_priv)
 
       {:error, msg} ->
         {:error, msg}

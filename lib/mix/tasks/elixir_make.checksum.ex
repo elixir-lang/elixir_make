@@ -19,6 +19,7 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
   """
 
   use Mix.Task
+  alias ElixirMake.Artefact
 
   @switches [
     all: :boolean,
@@ -42,10 +43,10 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
     urls =
       cond do
         Keyword.get(options, :all) ->
-          ElixirMake.Artefact.available_nif_urls(config, precompiler)
+          Artefact.available_nif_urls(config, precompiler)
 
         Keyword.get(options, :only_local) ->
-          case ElixirMake.Artefact.current_target_nif_url(config, precompiler) do
+          case Artefact.current_target_nif_url(config, precompiler) do
             {:ok, target, url} -> [{target, url}]
             {:error, error} -> Mix.raise(error)
           end
@@ -54,16 +55,64 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
           Mix.raise("you need to specify either \"--all\" or \"--only-local\" flags")
       end
 
-    result = ElixirMake.Artefact.download_nif_artefacts_with_checksums!(urls, options)
+    artefacts = download_and_checksum_all(urls, options)
 
-    if Keyword.get(options, :print) do
-      result
-      |> Enum.map(fn %{path: path, checksum: checksum} -> {Path.basename(path), checksum} end)
+    if Keyword.get(options, :print, false) do
+      artefacts
+      |> Enum.map(fn %Artefact{basename: basename, checksum: checksum} -> {basename, checksum} end)
       |> Enum.sort()
       |> Enum.map_join("\n", fn {file, checksum} -> "#{checksum}  #{file}" end)
       |> IO.puts()
     end
 
-    ElixirMake.Artefact.write_checksum!(result)
+    Artefact.write_checksums!(artefacts)
+  end
+
+  defp download_and_checksum_all(urls, options) do
+    ignore_unavailable? = Keyword.get(options, :ignore_unavailable, false)
+
+    tasks =
+      Task.async_stream(
+        urls,
+        fn {_target, url} -> {url, Artefact.download(url)} end,
+        timeout: :infinity,
+        ordered: false
+      )
+
+    cache_dir = Artefact.cache_dir()
+
+    Enum.flat_map(tasks, fn {:ok, {url, download}} ->
+      case download do
+        {:ok, body} ->
+          basename = basename_from_url(url)
+          path = Path.join(cache_dir, basename)
+          File.write!(path, body)
+          artefact = Artefact.checksum(basename, body)
+
+          Mix.shell().info(
+            "NIF cached at #{path} with checksum #{artefact.checksum} (#{artefact.checksum_algo})"
+          )
+
+          [artefact]
+
+        result ->
+          if ignore_unavailable? do
+            msg = "Skipped unavailable NIF artifact. Reason: #{inspect(result)}"
+            Mix.shell().info(msg)
+            []
+          else
+            msg = "Could not finish the download of NIF artifacts. Reason: #{inspect(result)}"
+            Mix.shell().error(msg)
+          end
+      end
+    end)
+  end
+
+  defp basename_from_url(url) do
+    uri = URI.parse(url)
+
+    uri.path
+    |> String.split("/")
+    |> List.last()
   end
 end

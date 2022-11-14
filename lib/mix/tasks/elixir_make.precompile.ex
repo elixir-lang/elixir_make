@@ -27,16 +27,13 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
 
       precompiled_artefacts =
         Enum.map(targets, fn target ->
-          {archived_filename, checksum_algo, checksum} =
-            case precompiler.precompile(args, target) do
-              :ok -> Artefact.create_precompiled_archive(config, target, paths)
-              {:error, msg} -> Mix.raise(msg)
-            end
-
-          %{path: archived_filename, checksum_algo: checksum_algo, checksum: checksum}
+          case precompiler.precompile(args, target) do
+            :ok -> create_precompiled_archive(config, target, paths)
+            {:error, msg} -> Mix.raise(msg)
+          end
         end)
 
-      Artefact.write_checksum!(precompiled_artefacts)
+      Artefact.write_checksums!(precompiled_artefacts)
 
       if function_exported?(precompiler, :post_precompile, 0) do
         precompiler.post_precompile()
@@ -51,5 +48,32 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
         File.rm_rf(file)
       end
     end
+  end
+
+  defp create_precompiled_archive(config, target, paths) do
+    archive_path = Artefact.archive_path(config, target)
+
+    Mix.shell().info("Creating precompiled archive: #{archive_path}")
+    Mix.shell().info("Paths to archive from priv directory: #{inspect(paths)}")
+
+    app_priv = Path.join(Mix.Project.app_path(config), "priv")
+    File.mkdir_p!(app_priv)
+    File.mkdir_p!(Path.dirname(archive_path))
+
+    artefact =
+      File.cd!(app_priv, fn ->
+        filepaths =
+          for path <- paths,
+              entry <- Path.wildcard(path),
+              do: String.to_charlist(entry)
+
+        Artefact.compress(archive_path, filepaths)
+      end)
+
+    Mix.shell().info(
+      "NIF cached at #{archive_path} with checksum #{artefact.checksum} (#{artefact.checksum_algo})"
+    )
+
+    artefact
   end
 end
