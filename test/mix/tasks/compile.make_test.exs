@@ -318,7 +318,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
       build_file = "build_file"
 
       precompile_config = [
-        make_precompiler: MyApp.Precompiler,
+        make_precompiler: {:nif, MyApp.Precompiler},
         make_precompiler_priv_paths: ["include_this*.txt", "symlink_to_lib", "lib", build_file],
         make_force_build: true
       ]

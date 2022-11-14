@@ -4,7 +4,12 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   @moduledoc """
   Precompiles the given project for all targets.
 
-  This is only supported if `make_precompiler` is specified.
+  This task must only be used by package creators who want to ship the
+  precompiled NIFs. This task is often used on CI to precompile
+  for different targets.
+
+  This is only supported if `:make_precompiler` is specified
+  in your project configuration.
   """
 
   alias ElixirMake.Artefact
@@ -16,15 +21,15 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
     config = Mix.Project.config()
     paths = config[:make_precompiler_priv_paths] || ["."]
 
+    {_, precompiler} =
+      config[:make_precompiler] ||
+        Mix.raise(
+          ":make_precompiler project configuration is required when using elixir_make.precompile"
+        )
+
+    targets = precompiler.all_supported_targets(:compile)
+
     try do
-      precompiler =
-        config[:make_precompiler] ||
-          Mix.raise(
-            ":make_precompiler project configuration is required when using elixir_make.precompile"
-          )
-
-      targets = precompiler.all_supported_targets(:compile)
-
       precompiled_artefacts =
         Enum.map(targets, fn target ->
           case precompiler.precompile(args, target) do

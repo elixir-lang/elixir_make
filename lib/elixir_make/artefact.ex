@@ -66,7 +66,13 @@ defmodule ElixirMake.Artefact do
   end
 
   defp archive_filename(config, target) do
-    "#{config[:app]}-nif-#{:erlang.system_info(:nif_version)}-#{target}-#{config[:version]}.tar.gz"
+    case config[:make_precompiler] do
+      {:nif, _} ->
+        "#{config[:app]}-nif-#{:erlang.system_info(:nif_version)}-#{target}-#{config[:version]}.tar.gz"
+
+      {type, _} ->
+        "#{config[:app]}-#{type}-#{target}-#{config[:version]}.tar.gz"
+    end
   end
 
   @doc """
@@ -138,12 +144,12 @@ defmodule ElixirMake.Artefact do
   @doc """
   Returns all available target-url pairs available.
   """
-  def available_nif_urls(config, precompiler) do
+  def available_target_urls(config, precompiler) do
     targets = precompiler.all_supported_targets(:fetch)
 
     url_template =
-      config[:make_precompiled_url] ||
-        Mix.raise("`make_precompiled_url` is not specified in `project`")
+      config[:make_precompiler_url] ||
+        Mix.raise("`make_precompiler_url` is not specified in `project`")
 
     Enum.map(targets, fn target ->
       archive_filename = archive_filename(config, target)
@@ -154,10 +160,10 @@ defmodule ElixirMake.Artefact do
   @doc """
   Returns the url for the current target.
   """
-  def current_target_nif_url(config, precompiler) do
+  def current_target_url(config, precompiler) do
     case precompiler.current_target() do
       {:ok, current_target} ->
-        available_urls = available_nif_urls(config, precompiler)
+        available_urls = available_target_urls(config, precompiler)
 
         case List.keyfind(available_urls, current_target, 0) do
           {^current_target, download_url} ->

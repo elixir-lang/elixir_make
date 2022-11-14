@@ -26,7 +26,7 @@ def deps do
 end
 ```
 
-Then add `:elixir_make` to the `compilers` list, and set `CCPrecompile` as the value for `make_precompiler`.
+Then add `:elixir_make` to the `compilers` list, and set the type (`:nif` or `:port`) and `CCPrecompile` as the value for `:make_precompiler`.
 
 ```elixir
 @version "0.1.0"
@@ -35,20 +35,20 @@ def project do
     # ...
     compilers: [:elixir_make] ++ Mix.compilers(),
     # elixir_make specific config
-    make_precompiler: CCPrecompiler,
-    make_precompiled_url: "https://github.com/cocoa-xu/cc_precompiler_example/releases/download/v#{@version}/@{artefact_filename}",
-    make_nif_filename: "nif",
+    make_precompiler: {:nif, CCPrecompiler},
+    make_precompiler_url: "https://github.com/cocoa-xu/cc_precompiler_example/releases/download/v#{@version}/@{artefact_filename}",
+    make_precompiler_filename: "nif",
     make_precompiler_priv_paths: ["nif.*"]
     # ...
   ]
 end
 ```
 
-Another required field is `make_precompiled_url`. It is a URL template to the artefact file.
+Another required field is `make_precompiler_url`. It is a URL template to the artefact file.
 
 `@{artefact_filename}` in the URL template string will be replaced by corresponding artefact filenames when fetching them. For example, `cc_precompiler_example-nif-2.16-x86_64-linux-gnu-0.1.0.tar.gz`.
 
-Note that there is an optional config key for elixir_make, `make_nif_filename`. If the name (file extension does not count) of the shared library is different from your app's name, then `make_nif_filename` should be set. For example, if the app name is `"cc_precompiler_example"` while the name shared library is `"nif.so"` (or `"nif.dll"` on windows), then `make_nif_filename` should be set as `"nif"`.
+Note that there is an optional config key for elixir_make, `make_precompiler_filename`. If the name (file extension does not count) of the shared library is different from your app's name, then `make_precompiler_filename` should be set. For example, if the app name is `"cc_precompiler_example"` while the name shared library is `"nif.so"` (or `"nif.dll"` on windows), then `make_precompiler_filename` should be set as `"nif"`.
 
 Another optional config key is `make_precompiler_priv_paths`. For example, say the `priv` directory is organised as follows in Linux, macOS and Windows respectively,
 
