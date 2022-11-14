@@ -27,13 +27,13 @@ defmodule ElixirMake.Precompiler do
   When `operation` is `:fetch`, the precompiler should return the full list. The full list for
   the above example should be:
 
-    [
-      "x86_64-linux-gnu",
-      "x86_64-apple-darwin",
-      "aarch64-apple-darwin",
-      "amd64-windows",
-      "x86-windows"
-    ]
+      [
+        "x86_64-linux-gnu",
+        "x86_64-apple-darwin",
+        "aarch64-apple-darwin",
+        "amd64-windows",
+        "x86-windows"
+      ]
 
   This allows the precompiler to do the compilation work in multilple hosts and gather all the
   artefacts later with `mix elixir_make.checksum --all`.
