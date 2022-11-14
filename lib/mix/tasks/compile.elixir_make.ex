@@ -56,13 +56,19 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
   The following options configure precompilation:
 
-    * `:make_precompiler` - the precompiled module to use. Defaults to none.
+    * `:make_precompiler` - a two-element tuple with the precompiled type
+      and module to use. The precompile type is either `:nif` or `:port`
+      and then the precompilation module. If the type is a `:nif`, it looks
+      for a DDL or a shared object as precompilation target given by
+      `:make_precompiler_filename` and the current NIF version is part of
+      the precompiled archive. If `:port`, it looks for an executable with
+      `:make_precompiler_filename`.
 
-    * `:make_precompiled_url` - the download URL template. Defaults to none.
+    * `:make_precompiler_url` - the download URL template. Defaults to none.
       Required when `make_precompiler` is set.
 
-    * `:make_nif_filename` - the filename of the compiled NIF without extension.
-      Defaults to the app name.
+    * `:make_precompiler_filename` - the filename of the compiled artefact
+      without its extension. Defaults to the app name.
 
     * `:make_force_build` - if build should be forced even if precompiled artefacts
       are available. Defaults to true if the app has a `-dev` version flag.
@@ -118,7 +124,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     app = config[:app]
     version = config[:version]
     force_build = pre_release?(version) or Keyword.get(config, :make_force_build, false)
-    precompiler = config[:make_precompiler]
+    {precompiler_type, precompiler} = config[:make_precompiler] || {nil, nil}
 
     cond do
       precompiler == nil ->
@@ -128,19 +134,24 @@ defmodule Mix.Tasks.Compile.ElixirMake do
         precompiler.build_native(args)
 
       true ->
-        nif_filename = config[:make_nif_filename] || "#{app}"
-        app_priv = Path.join(Mix.Project.app_path(config), "priv")
+        rootname = config[:make_precompiler_filename] || "#{app}"
 
-        load_path =
-          case :os.type() do
-            {:win32, _} -> Path.join(app_priv, "#{nif_filename}.dll")
-            _ -> Path.join(app_priv, "#{nif_filename}.so")
+        extname =
+          case {precompiler_type, :os.type()} do
+            {:nif, {:win32, _}} -> ".dll"
+            {:nif, _} -> ".so"
+            {:port, {:win32, _}} -> ".exe"
+            {:port, _} -> ""
+            {_, _} -> raise_unknown_precompiler_type(precompiler_type)
           end
 
+        app_priv = Path.join(Mix.Project.app_path(config), "priv")
+        load_path = Path.join(app_priv, rootname <> extname)
+
         with false <- File.exists?(load_path),
-             {:error, precomp_error} <- download_or_reuse_nif(config, precompiler, app_priv) do
+             {:error, message} <- download_or_reuse_nif(config, precompiler, app_priv) do
           Mix.shell().error("""
-          Error happened while installing #{app} from precompiled binary: #{precomp_error}.
+          Error happened while installing #{app} from precompiled binary: #{message}.
 
           Attempting to compile #{app} from source...\
           """)
@@ -150,6 +161,10 @@ defmodule Mix.Tasks.Compile.ElixirMake do
           _ -> {:ok, []}
         end
     end
+  end
+
+  defp raise_unknown_precompiler_type(precompiler_type) do
+    Mix.raise("Unknown precompiler type: #{inspect(precompiler_type)} (expected :nif or :port)")
   end
 
   # This is called by Elixir when `mix clean` runs
@@ -171,7 +186,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   end
 
   defp download_or_reuse_nif(config, precompiler, app_priv) do
-    case Artefact.current_target_nif_url(config, precompiler) do
+    case Artefact.current_target_url(config, precompiler) do
       {:ok, target, url} ->
         archived_fullpath = Artefact.archive_path(config, target)
 

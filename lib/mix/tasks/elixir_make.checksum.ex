@@ -32,7 +32,7 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
   def run(flags) when is_list(flags) do
     config = Mix.Project.config()
 
-    precompiler =
+    {_, precompiler} =
       config[:make_precompiler] ||
         Mix.raise(
           ":make_precompiler project configuration is required when using elixir_make.checksum"
@@ -43,10 +43,10 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
     urls =
       cond do
         Keyword.get(options, :all) ->
-          Artefact.available_nif_urls(config, precompiler)
+          Artefact.available_target_urls(config, precompiler)
 
         Keyword.get(options, :only_local) ->
-          case Artefact.current_target_nif_url(config, precompiler) do
+          case Artefact.current_target_url(config, precompiler) do
             {:ok, target, url} -> [{target, url}]
             {:error, error} -> Mix.raise(error)
           end
