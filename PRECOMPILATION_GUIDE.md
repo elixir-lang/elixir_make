@@ -181,7 +181,7 @@ def project do
     # either append `"-dev"` to your NIF library's version string
     version: @version,
     # or set force_build to true
-    force_build: true,
+    make_force_build: true,
     # ...
   ]
 end
@@ -285,6 +285,7 @@ jobs:
 ```
 
 ### Generate checksum file
+
 After CI has finished, you can fetch the precompiled binaries from GitHub.
 
 ```shell
@@ -309,9 +310,10 @@ defp package do
 end
 ```
 
-However, there is no need to track the checksum file in your version control system (git or other).
+However, there is no need to track the checksum file in your version control system (git or other), so consider adding it to your `.gitignore`.
 
 ### (Optional) Test fetched artefacts can work locally
+
 ```shell
 # delete previously built binaries so that
 # elixir_make will try to restore the NIF library
@@ -341,7 +343,8 @@ Finished in 0.01 seconds (0.00s async, 0.01s sync)
 Randomized with seed 539590
 ```
 
-## Recommended flow
+### Recommended flow
+
 To recap, the suggested flow is the following:
 
 1. Choose an appropriate precompiler for your NIF library and set all necessary options in the `mix.exs`.
@@ -353,6 +356,7 @@ To recap, the suggested flow is the following:
   ```
 
 3. (Optional) Test if your NIF library can precompile to all specified targets locally.
+
   ```shell
   MIX_ENV=prod mix elixir_make.precompile
   ```
@@ -385,8 +389,8 @@ To recap, the suggested flow is the following:
   ```
 
 6. Update Hex package to include the checksum file.
-7. Release the package to Hex.pm (make sure your release includes the correct files).
 
+7. Release the package to Hex.pm (make sure your release includes the correct files).
 
 ## Precompiler Module Developer
 
@@ -440,8 +444,8 @@ defmodule CCPrecompiler do
   require Logger
   @behaviour ElixirMake.Precompiler
 
-  # The default configuration for this precompiler module on linux systems.
-  # It will detect for the following targets
+  # This is the default configuration for this demo precompiler module
+  # for linux systems, it will detect for the following targets
   #   - x86_64-linux-gnu
   #   - i686-linux-gnu
   #   - aarch64-linux-gnu
@@ -580,14 +584,15 @@ defmodule CCPrecompiler do
 
   @impl ElixirMake.Precompiler
   def all_supported_targets(:compile) do
-    # this callback is expected to return a list of string for
-    #   all supported targets by this precompiler. in this
-    #   implementation, we will try to find a few crosscompilers
-    #   available in the system.
+    # This callback is expected to return a list of string for
+    # all supported targets by this precompiler. in this
+    # implementation, we will try to find a few crosscompilers
+    # available in the system.
+    #
     # Note that this implementation is mainly used for demostration
-    #   purpose, therefore the hardcoded compiler names are used in
-    #   DEBIAN/Ubuntu Linux (as I only installed these ones at the
-    #   time of writting this example)
+    # purpose, therefore the hardcoded compiler names are used in
+    # DEBIAN/Ubuntu Linux (as I only installed these ones at the
+    # time of writting this example)
     with {:ok, current} <- current_target() do
       Enum.uniq([current] ++ find_all_available_targets())
     else
@@ -630,7 +635,7 @@ defmodule CCPrecompiler do
     #
     # It's also possible to forward this call to:
     #
-    #   `precompile(args, elem(current_target(), 1))`
+    #     precompile(args, elem(current_target(), 1))
     #
     # This could be useful when the precompiler is using a universal
     # (cross-)compiler, say zig. in this way, the compiled binaries

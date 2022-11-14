@@ -103,7 +103,7 @@ defmodule ElixirMake.Artefact do
 
         case checksum(basename, contents) do
           %Artefact{checksum: ^checksum, checksum_algo: ^algo} ->
-            case :erl_tar.extract(contents, [:compressed, {:cwd, app_priv}]) do
+            case :erl_tar.extract({:binary, contents}, [:compressed, {:cwd, app_priv}]) do
               :ok ->
                 :ok
 
