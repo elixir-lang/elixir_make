@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.7.0 (2022-12-02)
+
+  * Support precompilation with custom precompilers
+  * Don't pass default Erlang environment variables into make
+
 ## v0.6.3 (2021-10-19)
 
   * Fallback to `make` if `nmake` is not available on Windows.
