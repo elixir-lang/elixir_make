@@ -29,7 +29,7 @@ defmodule ElixirMake.Mixfile do
 
   defp package do
     %{
-      licenses: ["Apache 2"],
+      licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/elixir-lang/elixir_make"},
       maintainers: ["Andrea Leopardi", "José Valim"]
     }
