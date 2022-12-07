@@ -206,13 +206,13 @@ defmodule ElixirMake.Artefact do
     # https://erlef.github.io/security-wg/secure_coding_and_deployment_hardening/inets
     # TODO: This may no longer be necessary from Erlang/OTP 25.0 or later.
     https_options = [
-      ssl: [
-        verify: :verify_peer,
-        cacertfile: certificate_store(),
-        customize_hostname_check: [
-          match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
-        ]
-      ]
+      ssl:
+        [
+          verify: :verify_peer,
+          customize_hostname_check: [
+            match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+          ]
+        ] ++ cacerts_options()
     ]
 
     options = [body_format: :binary]
@@ -226,8 +226,43 @@ defmodule ElixirMake.Artefact do
     end
   end
 
+  defp cacerts_options do
+    cond do
+      path = System.get_env("ELIXIR_MAKE_CACERT") ->
+        [cacertfile: path]
+
+      Application.spec(:castore, :vsn) ->
+        [cacertfile: Application.app_dir(:castore, "priv/cacerts.pem")]
+
+      Application.spec(:certifi, :vsn) ->
+        [cacertfile: Application.app_dir(:certifi, "priv/cacerts.pem")]
+
+      certs = otp_cacerts() ->
+        [cacerts: certs]
+
+      path = cacerts_from_os() ->
+        [cacertfile: path]
+
+      true ->
+        warn_no_cacerts()
+        []
+    end
+  end
+
+  defp otp_cacerts do
+    if System.otp_release() >= "25" do
+      # cacerts_get/0 raises if no certs found
+      try do
+        :public_key.cacerts_get()
+      rescue
+        _ ->
+          nil
+      end
+    end
+  end
+
   # https_opts and related code are taken from
-  # https://github.com/elixir-cldr/cldr_utils/blob/master/lib/cldr/http/http.ex
+  # https://github.com/elixir-cldr/cldr_utils/blob/v2.19.1/lib/cldr/http/http.ex
   @certificate_locations [
     # Debian/Ubuntu/Gentoo etc.
     "/etc/ssl/certs/ca-certificates.crt",
@@ -251,20 +286,11 @@ defmodule ElixirMake.Artefact do
     "/etc/ssl/cert.pem"
   ]
 
-  defp certificate_store do
-    [
-      System.get_env("ELIXIR_MAKE_CACERT"),
-      Application.spec(:castore, :vsn) && Application.app_dir(:castore, "priv/cacerts.pem"),
-      Application.spec(:certifi, :vsn) && Application.app_dir(:certifi, "priv/cacerts.pem")
-    ]
-    |> Enum.reject(&is_nil/1)
-    |> Kernel.++(@certificate_locations)
-    |> Enum.find(&File.exists?/1)
-    |> warning_if_no_cacertfile!()
-    |> :erlang.binary_to_list()
+  defp cacerts_from_os do
+    Enum.find(@certificate_locations, &File.exists?/1)
   end
 
-  defp warning_if_no_cacertfile!(nil) do
+  defp warn_no_cacerts do
     Mix.shell().error("""
     No certificate trust store was found.
 
@@ -286,12 +312,9 @@ defmodule ElixirMake.Artefact do
        by configuring it in environment variable:
 
          export ELIXIR_MAKE_CACERT="/path/to/cacerts.pem"
+
+    4. Use OTP 25+ on an OS that has built-in certificate
+       trust store.
     """)
-
-    ""
-  end
-
-  defp warning_if_no_cacertfile!(file) do
-    file
   end
 end
