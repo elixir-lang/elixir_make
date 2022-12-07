@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.1 (2022-12-07)
+
+  * Use CACerts from Erlang/OTP 25 if available
+
 ## v0.7.0 (2022-12-02)
 
   * Support precompilation with custom precompilers
