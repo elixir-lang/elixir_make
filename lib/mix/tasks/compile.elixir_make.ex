@@ -70,6 +70,13 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     * `:make_precompiler_filename` - the filename of the compiled artefact
       without its extension. Defaults to the app name.
 
+    * `:make_precompiler_unavailable_target` - how to recover from unavailable
+      targets, either `:compile` or `:ignore`. Defaults to `:compile`.
+
+      It is also possible to pass in a 2-arity function: the first argument is
+      the triplet of the unavailable target, and the second argument is a list
+      that contains all available targets given by the precompiler.
+
     * `:make_force_build` - if build should be forced even if precompiled artefacts
       are available. Defaults to true if the app has a `-dev` version flag.
 
@@ -150,13 +157,34 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
         with false <- File.exists?(load_path),
              {:error, message} <- download_or_reuse_nif(config, precompiler, app_priv) do
-          Mix.shell().error("""
-          Error happened while installing #{app} from precompiled binary: #{message}.
+          {recover, error_msg} =
+            case message do
+              {:unavailable_target, current_target, available_targets, msg} ->
+                recover = config[:make_precompiler_unavailable_target] || :compile
 
-          Attempting to compile #{app} from source...\
-          """)
+                if is_function(recover, 2) do
+                  {recover.(current_target, available_targets), msg}
+                else
+                  {recover, msg}
+                end
 
-          precompiler.build_native(args)
+              _ ->
+                {:compile, message}
+            end
+
+          case recover do
+            :compile ->
+              Mix.shell().error("""
+              Error happened while installing #{app} from precompiled binary: #{error_msg}.
+
+              Attempting to compile #{app} from source...\
+              """)
+
+              precompiler.build_native(args)
+
+            :ignore ->
+              {:ok, []}
+          end
         else
           _ -> {:ok, []}
         end

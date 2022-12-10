@@ -173,7 +173,8 @@ defmodule ElixirMake.Artefact do
             available_targets = Enum.map(available_urls, fn {target, _url} -> target end)
 
             {:error,
-             "cannot find download url for current target `#{inspect(current_target)}`. Available targets are: #{inspect(available_targets)}"}
+             {:unavailable_target, current_target, available_targets,
+              "cannot find download url for current target `#{inspect(current_target)}`. Available targets are: #{inspect(available_targets)}"}}
         end
 
       {:error, msg} ->
