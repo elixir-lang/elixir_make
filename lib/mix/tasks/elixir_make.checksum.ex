@@ -47,8 +47,27 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
 
         Keyword.get(options, :only_local) ->
           case Artefact.current_target_url(config, precompiler) do
-            {:ok, target, url} -> [{target, url}]
-            {:error, error} -> Mix.raise(error)
+            {:ok, target, url} ->
+              [{target, url}]
+
+            {:error, {:unavailable_target, current_target, error}} ->
+              recover =
+                if function_exported?(precompiler, :unavailable_target, 1) do
+                  precompiler.unavailable_target(current_target)
+                else
+                  :compile
+                end
+
+              case recover do
+                :compile ->
+                  Mix.raise(error)
+
+                :ignore ->
+                  []
+              end
+
+            {:error, error} ->
+              Mix.raise(error)
           end
 
         true ->

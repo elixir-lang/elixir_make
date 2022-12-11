@@ -150,13 +150,32 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
         with false <- File.exists?(load_path),
              {:error, message} <- download_or_reuse_nif(config, precompiler, app_priv) do
-          Mix.shell().error("""
-          Error happened while installing #{app} from precompiled binary: #{message}.
+          {recover, error_msg} =
+            case message do
+              {:unavailable_target, current_target, msg} ->
+                if function_exported?(precompiler, :unavailable_target, 1) do
+                  {precompiler.unavailable_target(current_target), msg}
+                else
+                  {:compile, msg}
+                end
 
-          Attempting to compile #{app} from source...\
-          """)
+              _ ->
+                {:compile, message}
+            end
 
-          precompiler.build_native(args)
+          case recover do
+            :compile ->
+              Mix.shell().error("""
+              Error happened while installing #{app} from precompiled binary: #{error_msg}.
+
+              Attempting to compile #{app} from source...\
+              """)
+
+              precompiler.build_native(args)
+
+            :ignore ->
+              {:ok, []}
+          end
         else
           _ -> {:ok, []}
         end

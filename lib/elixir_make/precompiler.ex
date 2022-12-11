@@ -71,7 +71,26 @@ defmodule ElixirMake.Precompiler do
   """
   @callback post_precompile() :: :ok
 
-  @optional_callbacks post_precompile: 0
+  @doc """
+  Optional recover actions when the current target is unavailable.
+
+  There are two reasons that the current target might be unavailable:
+  when the library only has precompiled binaries for some platforms,
+  and it either
+
+  - needs to be compiled on other platforms.
+
+    The callback should return `:compile` for this case.
+
+  - is intended to function as `noop` on other platforms.
+
+    The callback should return `:ignore` for this case.
+
+  Defaults to `:compile` if this callback is not implemented.
+  """
+  @callback unavailable_target(String.t()) :: :compile | :ignore
+
+  @optional_callbacks post_precompile: 0, unavailable_target: 1
 
   @doc """
   Invoke the regular Mix toolchain compilation.
