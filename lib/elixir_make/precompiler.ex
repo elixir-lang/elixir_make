@@ -74,8 +74,9 @@ defmodule ElixirMake.Precompiler do
   @doc """
   Optional recover actions when the current target is unavailable.
 
-  There are two reasons that the current target might be unavailable when
-  the library only has precompiled binaries for some platforms, and it either
+  There are two reasons that the current target might be unavailable:
+  when the library only has precompiled binaries for some platforms,
+  and it either
 
   - needs to be compiled on other platforms.
 
