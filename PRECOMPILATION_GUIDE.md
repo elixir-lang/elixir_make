@@ -38,8 +38,7 @@ def project do
     make_precompiler: {:nif, CCPrecompiler},
     make_precompiler_url: "https://github.com/cocoa-xu/cc_precompiler_example/releases/download/v#{@version}/@{artefact_filename}",
     make_precompiler_filename: "nif",
-    make_precompiler_priv_paths: ["nif.*"],
-    make_precompiler_unavailable_target: :compile,
+    make_precompiler_priv_paths: ["nif.*"]
     # ...
   ]
 end
@@ -52,10 +51,6 @@ Another required field is `make_precompiler_url`. It is a URL template to the ar
 Note that there is an optional config key for elixir_make, `make_precompiler_filename`. If the name (file extension does not count) of the shared library is different from your app's name, then `make_precompiler_filename` should be set. For example, if the app name is `"cc_precompiler_example"` while the name shared library is `"nif.so"` (or `"nif.dll"` on windows), then `make_precompiler_filename` should be set as `"nif"`.
 
 Another optional config key is `make_precompiler_priv_paths`. For example, say the `priv` directory is organised as follows in Linux, macOS and Windows respectively,
-
-Also, you can specify how to recover from unavailable targets using the `make_precompiler_unavailable_target` config key. Allowed values are `:compile` and `:ignore`. Defaults to `:compile`.
-
-It is also possible to pass in a 2-arity function to `make_precompiler_unavailable_target`: the first argument is the triplet of the unavailable target, and the second argument is a list that contains all available targets given by the precompiler.
 
 ```
 # Linux

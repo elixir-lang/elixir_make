@@ -50,14 +50,12 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
             {:ok, target, url} ->
               [{target, url}]
 
-            {:error, {:unavailable_target, current_target, available_targets, error}} ->
-              recover = config[:make_precompiler_unavailable_target] || :compile
-
+            {:error, {:unavailable_target, current_target, error}} ->
               recover =
-                if is_function(recover, 2) do
-                  recover.(current_target, available_targets)
+                if function_exported?(precompiler, :unavailable_target, 1) do
+                  precompiler.unavailable_target(current_target)
                 else
-                  recover
+                  :compile
                 end
 
               case recover do

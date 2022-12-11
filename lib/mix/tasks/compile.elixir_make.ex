@@ -70,13 +70,6 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     * `:make_precompiler_filename` - the filename of the compiled artefact
       without its extension. Defaults to the app name.
 
-    * `:make_precompiler_unavailable_target` - how to recover from unavailable
-      targets, either `:compile` or `:ignore`. Defaults to `:compile`.
-
-      It is also possible to pass in a 2-arity function: the first argument is
-      the triplet of the unavailable target, and the second argument is a list
-      that contains all available targets given by the precompiler.
-
     * `:make_force_build` - if build should be forced even if precompiled artefacts
       are available. Defaults to true if the app has a `-dev` version flag.
 
@@ -159,13 +152,11 @@ defmodule Mix.Tasks.Compile.ElixirMake do
              {:error, message} <- download_or_reuse_nif(config, precompiler, app_priv) do
           {recover, error_msg} =
             case message do
-              {:unavailable_target, current_target, available_targets, msg} ->
-                recover = config[:make_precompiler_unavailable_target] || :compile
-
-                if is_function(recover, 2) do
-                  {recover.(current_target, available_targets), msg}
+              {:unavailable_target, current_target, msg} ->
+                if function_exported?(precompiler, :unavailable_target, 1) do
+                  {precompiler.unavailable_target(current_target), msg}
                 else
-                  {recover, msg}
+                  {:compile, msg}
                 end
 
               _ ->
