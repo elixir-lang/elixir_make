@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.2 (2022-12-14)
+
+  * Allow precompiler to configure behaviour for unavailable targets
+
 ## v0.7.1 (2022-12-07)
 
   * Use CACerts from Erlang/OTP 25 if available
