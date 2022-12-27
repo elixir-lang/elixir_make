@@ -35,12 +35,15 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
           case precompiler.precompile(args, target) do
             :ok ->
               create_precompiled_archive(config, target, paths)
-              if function_exported?(precompiler, :post_target_archive, 1) do
-                precompiler.post_target_archive(target)
+
+              if function_exported?(precompiler, :post_precompile_target, 1) do
+                precompiler.post_precompile_target(target)
               else
                 :ok
               end
-            {:error, msg} -> Mix.raise(msg)
+
+            {:error, msg} ->
+              Mix.raise(msg)
           end
         end)
 

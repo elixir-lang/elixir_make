@@ -69,7 +69,7 @@ defmodule ElixirMake.Precompiler do
   It will be called when a target is precompiled and archived successfully.
   For example, actions can be deleting all target-specific files.
   """
-  @callback post_target_archive(target) :: :ok
+  @callback post_precompile_target(target) :: :ok
 
   @doc """
   Optional post actions to run after all precompilation tasks are done.
@@ -99,7 +99,7 @@ defmodule ElixirMake.Precompiler do
   """
   @callback unavailable_target(String.t()) :: :compile | :ignore
 
-  @optional_callbacks post_precompile: 0, unavailable_target: 1, post_target_archive: 1
+  @optional_callbacks post_precompile: 0, unavailable_target: 1, post_precompile_target: 1
 
   @doc """
   Invoke the regular Mix toolchain compilation.

@@ -708,7 +708,7 @@ defmodule CCPrecompiler do
   end
 
   @impl ElixirMake.Precompiler
-  def post_target_archive(target) do
+  def post_precompile_target(target) do
     # It's possible to do some cleanup work
     # in this optionall callback
     # it will be called when `target` is properly archived
