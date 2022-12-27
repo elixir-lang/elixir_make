@@ -708,6 +708,16 @@ defmodule CCPrecompiler do
   end
 
   @impl ElixirMake.Precompiler
+  def post_precompile_target(target) do
+    # It's possible to do some cleanup work
+    # in this optionall callback
+    # it will be called when `target` is properly archived
+    # so you may safely delete all target-specific files,
+    # like call `make clean`
+    Logger.debug("Post target archive")
+  end
+
+  @impl ElixirMake.Precompiler
   def post_precompile() do
     # It's possible to do some post precompilation work
     # in this optionall callback

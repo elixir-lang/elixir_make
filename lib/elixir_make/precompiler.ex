@@ -64,6 +64,14 @@ defmodule ElixirMake.Precompiler do
   @callback precompile(OptionParser.argv(), target) :: :ok | {:error, String.t()}
 
   @doc """
+  Optional post actions to run after each precompilation target is archived.
+
+  It will be called when a target is precompiled and archived successfully.
+  For example, actions can be deleting all target-specific files.
+  """
+  @callback post_precompile_target(target) :: :ok
+
+  @doc """
   Optional post actions to run after all precompilation tasks are done.
 
   It will only be called at the end of the `mix elixir_make.precompile` command.
@@ -91,7 +99,7 @@ defmodule ElixirMake.Precompiler do
   """
   @callback unavailable_target(String.t()) :: :compile | :ignore
 
-  @optional_callbacks post_precompile: 0, unavailable_target: 1
+  @optional_callbacks post_precompile: 0, unavailable_target: 1, post_precompile_target: 1
 
   @doc """
   Invoke the regular Mix toolchain compilation.
