@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.3 (2022-12-27)
+
+  * Add `post_precompile_target` to `ElixirMake.Precompiler` behaviour
+
 ## v0.7.2 (2022-12-14)
 
   * Allow precompiler to configure behaviour for unavailable targets
