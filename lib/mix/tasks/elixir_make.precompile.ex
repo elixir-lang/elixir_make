@@ -33,7 +33,13 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
       precompiled_artefacts =
         Enum.map(targets, fn target ->
           case precompiler.precompile(args, target) do
-            :ok -> create_precompiled_archive(config, target, paths)
+            :ok ->
+              create_precompiled_archive(config, target, paths)
+              if function_exported?(precompiler, :post_target_archive, 1) do
+                precompiler.post_target_archive(target)
+              else
+                :ok
+              end
             {:error, msg} -> Mix.raise(msg)
           end
         end)
