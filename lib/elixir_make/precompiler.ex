@@ -53,14 +53,15 @@ defmodule ElixirMake.Precompiler do
   it is possible for the precompiler module to pick up other environment variables
   like `TARGET_ARCH=aarch64` and adjust compile arguments correspondingly.
   """
-  @callback build_native(OptionParser.argv()) :: :ok | {:ok, []} | no_return
+  @callback build_native(OptionParser.argv()) ::
+              {Mix.Task.Compiler.status(), [Mix.Task.Compiler.Diagnostic.t()]}
 
   @doc """
   This callback should precompile the library to the given target(s).
 
   Returns `:ok` if the requested target has successfully compiled.
   """
-  @callback precompile(OptionParser.argv(), target) :: :ok | {:error, String.t()} | no_return
+  @callback precompile(OptionParser.argv(), target) :: :ok | {:error, String.t()}
 
   @doc """
   Optional post actions to run after all precompilation tasks are done.
