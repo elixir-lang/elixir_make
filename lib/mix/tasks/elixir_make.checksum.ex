@@ -30,6 +30,12 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
 
   @impl true
   def run(flags) when is_list(flags) do
+    if function_exported?(Mix, :ensure_application!, 1) do
+      Mix.ensure_application!(:inets)
+      Mix.ensure_application!(:ssl)
+      Mix.ensure_application!(:crypto)
+    end
+
     config = Mix.Project.config()
 
     {_, precompiler} =

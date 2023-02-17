@@ -120,6 +120,12 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
   @doc false
   def run(args) do
+    if function_exported?(Mix, :ensure_application!, 1) do
+      Mix.ensure_application!(:inets)
+      Mix.ensure_application!(:ssl)
+      Mix.ensure_application!(:crypto)
+    end
+
     config = Mix.Project.config()
     app = config[:app]
     version = config[:version]
