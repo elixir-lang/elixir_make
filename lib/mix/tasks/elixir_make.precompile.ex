@@ -18,6 +18,12 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
 
   @impl true
   def run(args) do
+    if function_exported?(Mix, :ensure_application!, 1) do
+      Mix.ensure_application!(:inets)
+      Mix.ensure_application!(:ssl)
+      Mix.ensure_application!(:crypto)
+    end
+
     config = Mix.Project.config()
     paths = config[:make_precompiler_priv_paths] || ["."]
 
