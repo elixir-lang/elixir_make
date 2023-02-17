@@ -1,7 +1,7 @@
 defmodule ElixirMake.Mixfile do
   use Mix.Project
 
-  @version "0.7.3"
+  @version "0.7.4"
 
   def project do
     [
@@ -12,7 +12,7 @@ defmodule ElixirMake.Mixfile do
       package: package(),
       docs: docs(),
       deps: deps(),
-      xref: [exclude: [:crypto, :ssl, :public_key, :httpc]]
+      xref: [exclude: [Mix, :crypto, :ssl, :public_key, :httpc]]
     ]
   end
 
