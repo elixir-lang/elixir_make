@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.4 (2023-17-02)
+
+  * Preload Erlang/OTP applications for Elixir v1.15+
+
 ## v0.7.3 (2022-12-27)
 
   * Add `post_precompile_target` to `ElixirMake.Precompiler` behaviour
