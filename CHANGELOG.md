@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.5 (2023-18-02)
+
+  * Support precompiling for multiple NIF versions
+
 ## v0.7.4 (2023-17-02)
 
   * Preload Erlang/OTP applications for Elixir v1.15+
