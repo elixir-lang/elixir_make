@@ -142,7 +142,7 @@ defmodule ElixirMake.Artefact do
   ## Archive/NIF urls
 
   @doc """
-  Returns all available target-url pairs available.
+  Returns all available {{target, nif_version}, url} pairs available.
   """
   def available_target_urls(config, precompiler) do
     targets = precompiler.all_supported_targets(:fetch)
@@ -171,7 +171,8 @@ defmodule ElixirMake.Artefact do
             archive_filename = archive_filename(config, target, nif_version)
 
             [
-              {target, String.replace(url_template, "@{artefact_filename}", archive_filename)}
+              {{target, nif_version},
+               String.replace(url_template, "@{artefact_filename}", archive_filename)}
               | acc
             ]
           else
@@ -187,12 +188,13 @@ defmodule ElixirMake.Artefact do
   Returns the url for the current target.
   """
   def current_target_url(config, precompiler, nif_version) do
-    case precompiler.current_target(nif_version) do
+    case precompiler.current_target() do
       {:ok, current_target} ->
         available_urls = available_target_urls(config, precompiler)
+        target_at_nif_version = {current_target, nif_version}
 
-        case List.keyfind(available_urls, current_target, 0) do
-          {^current_target, download_url} ->
+        case List.keyfind(available_urls, target_at_nif_version, 0) do
+          {^target_at_nif_version, download_url} ->
             {:ok, current_target, download_url}
 
           nil ->
