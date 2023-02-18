@@ -48,7 +48,7 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
         Keyword.get(options, :only_local) ->
           case Artefact.current_target_url(config, precompiler, :erlang.system_info(:nif_version)) do
             {:ok, target, url} ->
-              [{target, url}]
+              [{{target, "#{:erlang.system_info(:nif_version)}"}, url}]
 
             {:error, {:unavailable_target, current_target, error}} ->
               recover =
@@ -93,7 +93,7 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
     tasks =
       Task.async_stream(
         urls,
-        fn {_target, url} -> {url, Artefact.download(url)} end,
+        fn {{_target, _nif_version}, url} -> {url, Artefact.download(url)} end,
         timeout: :infinity,
         ordered: false
       )
