@@ -205,9 +205,12 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   end
 
   defp download_or_reuse_nif(config, precompiler, app_priv) do
-    case Artefact.current_target_url(config, precompiler) do
+    # should we allow this value to be overwritten by an env var?
+    nif_version = :erlang.system_info(:nif_version)
+
+    case Artefact.current_target_url(config, precompiler, nif_version) do
       {:ok, target, url} ->
-        archived_fullpath = Artefact.archive_path(config, target)
+        archived_fullpath = Artefact.archive_path(config, target, nif_version)
 
         unless File.exists?(archived_fullpath) do
           Mix.shell().info("Downloading precompiled NIF to #{archived_fullpath}")
