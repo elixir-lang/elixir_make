@@ -151,20 +151,29 @@ defmodule ElixirMake.Artefact do
       config[:make_precompiler_url] ||
         Mix.raise("`make_precompiler_url` is not specified in `project`")
 
-    nif_versions = config[:make_precompiler_nif_versions] || [versions: ["#{:erlang.system_info(:nif_version)}"]]
+    nif_versions =
+      config[:make_precompiler_nif_versions] ||
+        [versions: ["#{:erlang.system_info(:nif_version)}"]]
+
     Enum.reduce(targets, [], fn target, archives ->
       archive_filenames =
         Enum.reduce(nif_versions[:versions], [], fn nif_version, acc ->
           availability = nif_versions[:availability]
-          available? = if is_function(availability, 2) do
-            availability.(target, nif_version)
-          else
-            true
-          end
+
+          available? =
+            if is_function(availability, 2) do
+              availability.(target, nif_version)
+            else
+              true
+            end
 
           if available? do
             archive_filename = archive_filename(config, target, nif_version)
-            [{target, String.replace(url_template, "@{artefact_filename}", archive_filename)} | acc]
+
+            [
+              {target, String.replace(url_template, "@{artefact_filename}", archive_filename)}
+              | acc
+            ]
           else
             acc
           end

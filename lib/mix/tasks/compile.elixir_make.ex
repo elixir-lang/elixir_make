@@ -207,6 +207,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   defp download_or_reuse_nif(config, precompiler, app_priv) do
     # should we allow this value to be overwritten by an env var?
     nif_version = :erlang.system_info(:nif_version)
+
     case Artefact.current_target_url(config, precompiler, nif_version) do
       {:ok, target, url} ->
         archived_fullpath = Artefact.archive_path(config, target, nif_version)
