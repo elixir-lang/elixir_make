@@ -193,8 +193,6 @@ defmodule ElixirMake.Artefact do
         available_urls = available_target_urls(config, precompiler)
         target_at_nif_version = {current_target, nif_version}
 
-        IO.inspect(available_urls, label: "available_urls")
-
         case List.keyfind(available_urls, target_at_nif_version, 0) do
           {^target_at_nif_version, download_url} ->
             {:ok, current_target, download_url}
