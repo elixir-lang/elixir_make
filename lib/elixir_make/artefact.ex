@@ -61,14 +61,14 @@ defmodule ElixirMake.Artefact do
   @doc """
   Returns the full path to the precompiled archive.
   """
-  def archive_path(config, target) do
-    Path.join(cache_dir(), archive_filename(config, target))
+  def archive_path(config, target, nif_version) do
+    Path.join(cache_dir(), archive_filename(config, target, nif_version))
   end
 
-  defp archive_filename(config, target) do
+  defp archive_filename(config, target, nif_version) do
     case config[:make_precompiler] do
       {:nif, _} ->
-        "#{config[:app]}-nif-#{:erlang.system_info(:nif_version)}-#{target}-#{config[:version]}.tar.gz"
+        "#{config[:app]}-nif-#{nif_version}-#{target}-#{config[:version]}.tar.gz"
 
       {type, _} ->
         "#{config[:app]}-#{type}-#{target}-#{config[:version]}.tar.gz"
@@ -151,17 +151,34 @@ defmodule ElixirMake.Artefact do
       config[:make_precompiler_url] ||
         Mix.raise("`make_precompiler_url` is not specified in `project`")
 
-    Enum.map(targets, fn target ->
-      archive_filename = archive_filename(config, target)
-      {target, String.replace(url_template, "@{artefact_filename}", archive_filename)}
+    nif_versions = config[:make_precompiler_nif_versions] || [versions: ["#{:erlang.system_info(:nif_version)}"]]
+    Enum.reduce(targets, [], fn target, archives ->
+      archive_filenames =
+        Enum.reduce(nif_versions[:versions], [], fn nif_version, acc ->
+          availability = nif_versions[:availability]
+          available? = if is_function(availability, 2) do
+            availability.(target, nif_version)
+          else
+            true
+          end
+
+          if available? do
+            archive_filename = archive_filename(config, target, nif_version)
+            [{target, String.replace(url_template, "@{artefact_filename}", archive_filename)} | acc]
+          else
+            acc
+          end
+        end)
+
+      archive_filenames ++ archives
     end)
   end
 
   @doc """
   Returns the url for the current target.
   """
-  def current_target_url(config, precompiler) do
-    case precompiler.current_target() do
+  def current_target_url(config, precompiler, nif_version) do
+    case precompiler.current_target(nif_version) do
       {:ok, current_target} ->
         available_urls = available_target_urls(config, precompiler)
 

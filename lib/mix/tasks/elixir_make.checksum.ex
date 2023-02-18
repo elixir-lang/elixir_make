@@ -46,7 +46,7 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
           Artefact.available_target_urls(config, precompiler)
 
         Keyword.get(options, :only_local) ->
-          case Artefact.current_target_url(config, precompiler) do
+          case Artefact.current_target_url(config, precompiler, :erlang.system_info(:nif_version)) do
             {:ok, target, url} ->
               [{target, url}]
 

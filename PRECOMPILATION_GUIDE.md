@@ -35,10 +35,17 @@ def project do
     # ...
     compilers: [:elixir_make] ++ Mix.compilers(),
     # elixir_make specific config
+    # required
     make_precompiler: {:nif, CCPrecompiler},
     make_precompiler_url: "https://github.com/cocoa-xu/cc_precompiler_example/releases/download/v#{@version}/@{artefact_filename}",
+
+    # optional
     make_precompiler_filename: "nif",
-    make_precompiler_priv_paths: ["nif.*"]
+    make_precompiler_priv_paths: ["nif.*"],
+    make_precompiler_nif_versions: [
+      verisions: ["2.14", "2.15", "2.16"],
+      availability: &target_available_for_nif_version?/2
+    ]
     # ...
   ]
 end
@@ -48,9 +55,12 @@ Another required field is `make_precompiler_url`. It is a URL template to the ar
 
 `@{artefact_filename}` in the URL template string will be replaced by corresponding artefact filenames when fetching them. For example, `cc_precompiler_example-nif-2.16-x86_64-linux-gnu-0.1.0.tar.gz`.
 
-Note that there is an optional config key for elixir_make, `make_precompiler_filename`. If the name (file extension does not count) of the shared library is different from your app's name, then `make_precompiler_filename` should be set. For example, if the app name is `"cc_precompiler_example"` while the name shared library is `"nif.so"` (or `"nif.dll"` on windows), then `make_precompiler_filename` should be set as `"nif"`.
+#### `make_precompiler_filename` (optional config key)
 
-Another optional config key is `make_precompiler_priv_paths`. For example, say the `priv` directory is organised as follows in Linux, macOS and Windows respectively,
+The first optional config key for elixir_make is `make_precompiler_filename`. If the name (file extension does not count) of the shared library is different from your app's name, then `make_precompiler_filename` should be set. For example, if the app name is `"cc_precompiler_example"` while the name shared library is `"nif.so"` (or `"nif.dll"` on windows), then `make_precompiler_filename` should be set as `"nif"`.
+
+#### `make_precompiler_priv_paths` (optional config key)
+The second optional config key is `make_precompiler_priv_paths`. For example, say the `priv` directory is organised as follows in Linux, macOS and Windows respectively,
 
 ```
 # Linux
@@ -92,6 +102,30 @@ By default, everything in `priv` will be included in the precompiled tar file. H
 Of course, wildcards (`?`, `**`, `*`) are supported when specifiying files. For example, `["nif.*", "lib/*.so", "lib/*.dll", "lib/*.dylib"]` will include `nif.so` (Linux/macOS) or `nif.dll` (Windows), and `.so` or `.dll` files in the `lib` directory. 
 
 Directory structures and symbolic links are preserved.
+
+#### `make_precompiler_nif_versions` (optional config key)
+
+The third optional config key is `make_precompiler_nif_versions`. The default value is 
+
+```elixir
+[versions: ["#{:erlang.system_info(:nif_version)}"]]
+```
+
+If you'd like to aim for an older NIF version, say `2.15` for Erlang/OTP 23 and 24, then you need to setup CI correspondingly and set the value of this key to `[versions: ["2.15", "2.16"]]`. This optional key will only be checked when downloading precompiled artefacts.
+
+For some platforms maybe we only have precompiled artefacts after a certain NIF version, say for x86_64 Windows we have precompiled artefacts available when NIF verision >= `2.16` while other platforms have precompiled artefacts available from NIF version >= `2.15`.
+
+In such case we can inform `:elixir_make` that Windows targets don't have precompiled artefacts available except for NIF version `2.16` by passing a function to the `availability` sub-key.
+
+```elixir
+def target_available_for_nif_version?(target, nif_version) do
+  if String.contains?(target, "windows") do
+    nif_version == "2.16"
+  else
+    true
+  end
+end
+```
 
 ### (Optional) Customise Precompilation Targets
 

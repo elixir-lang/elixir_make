@@ -65,7 +65,7 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   end
 
   defp create_precompiled_archive(config, target, paths) do
-    archive_path = Artefact.archive_path(config, target)
+    archive_path = Artefact.archive_path(config, target, :erlang.system_info(:nif_version))
 
     Mix.shell().info("Creating precompiled archive: #{archive_path}")
     Mix.shell().info("Paths to archive from priv directory: #{inspect(paths)}")
