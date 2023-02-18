@@ -43,7 +43,7 @@ def project do
     make_precompiler_filename: "nif",
     make_precompiler_priv_paths: ["nif.*"],
     make_precompiler_nif_versions: [
-      verisions: ["2.14", "2.15", "2.16"],
+      versions: ["2.14", "2.15", "2.16"],
       availability: &target_available_for_nif_version?/2
     ]
     # ...
@@ -113,12 +113,12 @@ The third optional config key is `make_precompiler_nif_versions`. The default va
 
 If you'd like to aim for an older NIF version, say `2.15` for Erlang/OTP 23 and 24, then you need to setup CI correspondingly and set the value of this key to `[versions: ["2.15", "2.16"]]`. This optional key will only be checked when downloading precompiled artefacts.
 
-For some platforms maybe we only have precompiled artefacts after a certain NIF version, say for x86_64 Windows we have precompiled artefacts available when NIF verision >= `2.16` while other platforms have precompiled artefacts available from NIF version >= `2.15`.
+For some platforms maybe we only have precompiled artefacts after a certain NIF version, say for x86_64 Windows we have precompiled artefacts available when NIF version >= `2.16` while other platforms have precompiled artefacts available from NIF version >= `2.15`.
 
 In such case we can inform `:elixir_make` that Windows targets don't have precompiled artefacts available except for NIF version `2.16` by passing a function to the `availability` sub-key.
 
 ```elixir
-def target_available_for_nif_version?(target, nif_version) do
+defp target_available_for_nif_version?(target, nif_version) do
   if String.contains?(target, "windows") do
     nif_version == "2.16"
   else
