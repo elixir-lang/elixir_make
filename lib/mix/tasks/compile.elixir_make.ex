@@ -174,6 +174,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
               case reason do
                 :unavailable_target ->
                   nil
+
                 _ ->
                   Mix.shell().error("""
                   Error happened while installing #{app} from precompiled binary: #{error_msg}.
