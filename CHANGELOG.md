@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.7.6 (2023-03-17)
+
+  * Do not display error message when a target is unavailable
+  * Allow usage of castore 1.0
+
 ## v0.7.5 (2023-02-18)
 
   * Support precompiling for multiple NIF versions
