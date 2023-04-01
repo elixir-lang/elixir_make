@@ -118,6 +118,8 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   use Mix.Task
   alias ElixirMake.Artefact
 
+  @recursive true
+
   @doc false
   def run(args) do
     if function_exported?(Mix, :ensure_application!, 1) do

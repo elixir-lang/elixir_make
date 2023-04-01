@@ -21,6 +21,8 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
   use Mix.Task
   alias ElixirMake.Artefact
 
+  @recursive true
+
   @switches [
     all: :boolean,
     only_local: :boolean,
