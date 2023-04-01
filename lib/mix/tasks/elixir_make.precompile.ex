@@ -16,6 +16,8 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   require Logger
   use Mix.Task
 
+  @recursive true
+
   @impl true
   def run(args) do
     if function_exported?(Mix, :ensure_application!, 1) do
