@@ -74,21 +74,16 @@ defmodule ElixirMake.Compiler do
     env = if is_function(env), do: env.(), else: env
     env = default_env(config, env)
 
-    # In OTP 19, Erlang's `open_port/2` ignores the current working
-    # directory when expanding relative paths. This means that `:make_cwd`
-    # must be an absolute path. This is a different behaviour from earlier
-    # OTP versions and appears to be a bug. It is being tracked at
-    # https://bugs.erlang.org/browse/ERL-175.
     cwd = Keyword.get(config, :make_cwd, ".") |> Path.expand(File.cwd!())
     error_msg = Keyword.get(config, :make_error_message, :default) |> os_specific_error_msg()
     custom_args = Keyword.get(config, :make_args, [])
 
     if String.contains?(cwd, " ") do
-      IO.warn(
-        "the absolute path to the makefile for this project contains spaces. Make might " <>
-          "not work properly if spaces are present in the path. The absolute path is: " <>
-          inspect(cwd)
-      )
+      IO.warn("""
+      the absolute path to the Makefile for this project contains spaces. \
+      Make might not work properly if spaces are present in the path. \
+      The absolute path is: #{inspect(cwd)}
+      """)
     end
 
     base = exec |> Path.basename() |> Path.rootname()
@@ -124,7 +119,7 @@ defmodule ElixirMake.Compiler do
   defp find_executable(exec) do
     System.find_executable(exec) ||
       Mix.raise("""
-      "#{exec}" not found in the path. If you have set the MAKE environment variable,
+      "#{exec}" not found in the path. If you have set the MAKE environment variable, \
       please make sure it is correct.
       """)
   end

@@ -109,7 +109,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
       capture_io(:stdio, fn ->
         with_project_config([make_cwd: "subdir with spaces"], fn ->
           assert capture_io(:stderr, fn -> run([]) end) =~
-                   "the absolute path to the makefile for this project contains spaces."
+                   "the absolute path to the Makefile for this project contains spaces."
         end)
       end)
     end)
