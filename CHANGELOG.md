@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.7 (2023-06-01)
+
+  * Fix compiler in umbrella apps
+
 ## v0.7.6 (2023-03-17)
 
   * Do not display error message when a target is unavailable
