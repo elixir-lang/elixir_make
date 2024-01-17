@@ -23,6 +23,7 @@ defmodule ElixirMake.Mixfile do
   defp deps do
     [
       {:castore, "~> 0.1 or ~> 1.0", optional: true},
+      {:certifi, "~> 2.0", optional: true},
       {:ex_doc, "~> 0.20", only: :docs}
     ]
   end

@@ -215,6 +215,7 @@ defmodule ElixirMake.Artefact do
   def download(url) do
     url_charlist = String.to_charlist(url)
 
+    # TODO: Remove me when we require Elixir v1.15
     {:ok, _} = Application.ensure_all_started(:inets)
     {:ok, _} = Application.ensure_all_started(:ssl)
     {:ok, _} = Application.ensure_all_started(:public_key)
@@ -260,14 +261,14 @@ defmodule ElixirMake.Artefact do
       path = System.get_env("ELIXIR_MAKE_CACERT") ->
         [cacertfile: path]
 
+      certs = otp_cacerts() ->
+        [cacerts: certs]
+
       Application.spec(:castore, :vsn) ->
         [cacertfile: Application.app_dir(:castore, "priv/cacerts.pem")]
 
       Application.spec(:certifi, :vsn) ->
         [cacertfile: Application.app_dir(:certifi, "priv/cacerts.pem")]
-
-      certs = otp_cacerts() ->
-        [cacerts: certs]
 
       path = cacerts_from_os() ->
         [cacertfile: path]
