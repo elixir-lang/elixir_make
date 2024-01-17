@@ -263,14 +263,20 @@ defmodule ElixirMake.Artefact do
       Application.spec(:castore, :vsn) ->
         [cacertfile: Application.app_dir(:castore, "priv/cacerts.pem")]
 
-      Application.spec(:certifi, :vsn) ->
-        [cacertfile: Application.app_dir(:certifi, "priv/cacerts.pem")]
-
       certs = otp_cacerts() ->
         [cacerts: certs]
 
       path = cacerts_from_os() ->
         [cacertfile: path]
+
+      Application.spec(:certifi, :vsn) ->
+        try do
+          [cacertfile: Application.app_dir(:certifi, "priv/cacerts.pem")]
+        rescue
+          ArgumentError ->
+            warn_no_cacerts()
+            []
+        end
 
       true ->
         warn_no_cacerts()
