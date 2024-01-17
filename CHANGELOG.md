@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.8 (2024-01-17)
+
+  * List certifi as an optional dependency
+
 ## v0.7.7 (2023-06-01)
 
   * Fix compiler in umbrella apps
