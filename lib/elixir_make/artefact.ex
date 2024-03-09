@@ -146,7 +146,7 @@ defmodule ElixirMake.Artefact do
     {String.to_integer(major), String.to_integer(minor)}
   end
 
-  defp find_nif_version(current_nif_version, versions) do
+  defp find_nif_version(_current_target, current_nif_version, versions) do
     if current_nif_version in versions do
       current_nif_version
     else
@@ -161,7 +161,7 @@ defmodule ElixirMake.Artefact do
 
       case Enum.sort(candidates) do
         [{_, version} | _] -> version
-        _ -> :no_candidates
+        _ -> current_nif_version
       end
     end
   end
@@ -224,7 +224,7 @@ defmodule ElixirMake.Artefact do
             [versions: []]
 
         versions = nif_versions[:versions]
-        fallback_version = nif_versions[:fallback_version] || &find_nif_version/3
+        fallback_version = nif_versions[:fallback_version] || (&find_nif_version/3)
         nif_version_to_use = fallback_version.(current_target, current_nif_version, versions)
 
         available_urls = available_target_urls(config, precompiler)
