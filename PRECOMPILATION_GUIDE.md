@@ -43,8 +43,7 @@ def project do
     make_precompiler_filename: "nif",
     make_precompiler_priv_paths: ["nif.*"],
     make_precompiler_nif_versions: [
-      versions: ["2.14", "2.15", "2.16"],
-      availability: &target_available_for_nif_version?/2
+      versions: ["2.14", "2.15", "2.16"]
     ]
     # ...
   ]
