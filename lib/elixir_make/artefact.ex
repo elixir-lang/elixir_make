@@ -183,18 +183,10 @@ defmodule ElixirMake.Artefact do
         [versions: [current_nif_version]]
 
     versions = nif_versions[:versions]
-    versions_for_target = nif_versions[:versions_for_target]
 
     Enum.reduce(targets, [], fn target, archives ->
-      target_versions =
-        if is_function(versions_for_target, 1) do
-          versions_for_target.(target)
-        else
-          versions
-        end
-
       archive_filenames =
-        Enum.reduce(target_versions, [], fn nif_version_for_target, acc ->
+        Enum.reduce(versions, [], fn nif_version_for_target, acc ->
           archive_filename = archive_filename(config, target, nif_version_for_target)
 
           [
@@ -220,20 +212,12 @@ defmodule ElixirMake.Artefact do
 
         versions = nif_versions[:versions]
         fallback_version = nif_versions[:fallback_version]
-        versions_for_target = nif_versions[:versions_for_target]
-
-        target_versions =
-          if is_function(versions_for_target, 1) do
-            versions_for_target.(current_target)
-          else
-            versions
-          end
 
         nif_version_to_use =
-          case find_nif_version(current_nif_version, target_versions) do
+          case find_nif_version(current_nif_version, versions) do
             :no_candidates ->
               if is_function(fallback_version, 3) do
-                fallback_version.(current_target, current_nif_version, target_versions)
+                fallback_version.(current_target, current_nif_version, versions)
               else
                 current_nif_version
               end
