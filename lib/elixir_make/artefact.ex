@@ -155,6 +155,31 @@ defmodule ElixirMake.Artefact do
 
   ## Archive/NIF urls
 
+  defp nif_version_to_tuple(nif_version) do
+    [major, minor | _] = String.split(nif_version, ".")
+    {String.to_integer(major), String.to_integer(minor)}
+  end
+
+  defp find_nif_version(current_nif_version, versions) do
+    if current_nif_version in versions do
+      current_nif_version
+    else
+      {major, minor} = nif_version_to_tuple(current_nif_version)
+      # Get all matching major versions, earlier than the current version
+      # and their distance. We want the closest (smallest distance).
+      candidates =
+        for version <- versions,
+            {^major, candidate_minor} <- [nif_version_to_tuple(version)],
+            candidate_minor <= minor,
+            do: {minor - candidate_minor, version}
+
+      case Enum.sort(candidates) do
+        [{_, version} | _] -> version
+        _ -> :no_candidates
+      end
+    end
+  end
+
   @doc """
   Returns all available {{target, nif_version}, url} pairs available.
   """
@@ -171,119 +196,81 @@ defmodule ElixirMake.Artefact do
       config[:make_precompiler_nif_versions] ||
         [versions: [current_nif_version]]
 
-    use_minimum_version = nif_versions[:use_minimum_version] || false
+    versions = nif_versions[:versions]
+    versions_for_target = nif_versions[:versions_for_target]
 
-    if use_minimum_version do
-      minimum_version =
-        nif_versions[:minimum_version] ||
-          raise ArgumentError, """
-          `minimum_version` is not set in mix.exs while `use_minimum_version` is set to `true`.
-          `minimum_version` should be a string, e.g., "2.14" or a function that accepts two arguments, `target` and `current_nif_version`.
-          """
+    Enum.reduce(targets, [], fn target, archives ->
+      target_versions =
+        if is_function(versions_for_target, 1) do
+          versions_for_target.(target)
+        else
+          versions
+        end
 
-      versions_for_target = nif_versions[:versions_for_target]
+      archive_filenames =
+        Enum.reduce(target_versions, [], fn nif_version_for_target, acc ->
+          availability = nif_versions[:availability]
 
-      if is_binary(minimum_version) or is_function(minimum_version, 2) do
-        Enum.reduce(targets, [], fn target, archives ->
-          target_versions =
-            if is_function(versions_for_target, 1) do
-              versions_for_target.(target)
+          available? =
+            if is_function(availability, 2) do
+              availability.(target, nif_version_for_target)
             else
-              target_minimum_version =
-                case minimum_version do
-                  v when is_binary(v) ->
-                    v
-
-                  f when is_function(f, 2) ->
-                    f.(target, current_nif_version)
-                end
-
-              [target_minimum_version]
+              true
             end
 
-          archive_filenames =
-            Enum.map(target_versions, fn nif_version_for_target ->
-              archive_filename = archive_filename(config, target, nif_version_for_target)
+          if available? do
+            archive_filename = archive_filename(config, target, nif_version_for_target)
 
+            [
               {{target, nif_version_for_target},
                String.replace(url_template, "@{artefact_filename}", archive_filename)}
-            end)
-
-          archive_filenames ++ archives
+              | acc
+            ]
+          else
+            acc
+          end
         end)
-      else
-        raise ArgumentError, """
-        `minimum_version` should be a string, e.g., "2.14" or a function that accepts two arguments, `target` and `current_nif_version`.
-        got #{inspect(minimum_version)}
-        """
-      end
-    else
-      Enum.reduce(targets, [], fn target, archives ->
-        archive_filenames =
-          Enum.reduce(nif_versions[:versions], [], fn nif_version, acc ->
-            availability = nif_versions[:availability]
 
-            available? =
-              if is_function(availability, 2) do
-                availability.(target, nif_version)
-              else
-                true
-              end
-
-            if available? do
-              archive_filename = archive_filename(config, target, nif_version)
-
-              [
-                {{target, nif_version},
-                 String.replace(url_template, "@{artefact_filename}", archive_filename)}
-                | acc
-              ]
-            else
-              acc
-            end
-          end)
-
-        archive_filenames ++ archives
-      end)
-    end
+      archive_filenames ++ archives
+    end)
   end
 
   @doc """
   Returns the url for the current target.
   """
-  def current_target_url(config, precompiler, nif_version) do
+  def current_target_url(config, precompiler, current_nif_version) do
     case precompiler.current_target() do
       {:ok, current_target} ->
-        available_urls = available_target_urls(config, precompiler)
-        IO.puts("available_urls: #{inspect(available_urls)}")
-
         nif_versions =
           config[:make_precompiler_nif_versions] ||
-            [versions: ["#{:erlang.system_info(:nif_version)}"]]
+            [versions: [current_nif_version]]
 
-        use_minimum_version = nif_versions[:use_minimum_version] || false
+        versions = nif_versions[:versions]
+        fallback_version = nif_versions[:fallback_version]
+        versions_for_target = nif_versions[:versions_for_target]
 
-        target_at_nif_version =
-          if use_minimum_version do
-            minimum_version =
-              nif_versions[:minimum_version] ||
-                raise ArgumentError, """
-                `minimum_version` is not set in mix.exs while `use_minimum_version` is set to `true`
-                """
+        target_versions =
+          if is_function(versions_for_target, 1) do
+            versions_for_target.(current_target)
+          else
+            versions
+          end
 
-            minimum_version =
-              case minimum_version do
-                v when is_binary(v) ->
-                  v
-
-                f when is_function(f, 2) ->
-                  f.(current_target, nif_version)
+        nif_version_to_use =
+          case find_nif_version(current_nif_version, target_versions) do
+            :no_candidates ->
+              if is_function(fallback_version, 3) do
+                fallback_version.(current_target, current_nif_version, target_versions)
+              else
+                current_nif_version
               end
 
-            {current_target, minimum_version}
-          else
-            {current_target, nif_version}
+            version when is_binary(version) ->
+              version
           end
+
+        available_urls = available_target_urls(config, precompiler)
+        target_at_nif_version = {current_target, nif_version_to_use}
 
         case List.keyfind(available_urls, target_at_nif_version, 0) do
           {^target_at_nif_version, download_url} ->
