@@ -43,7 +43,8 @@ def project do
     make_precompiler_filename: "nif",
     make_precompiler_priv_paths: ["nif.*"],
     make_precompiler_nif_versions: [
-      versions: ["2.14", "2.15", "2.16"]
+      versions: ["2.14", "2.15", "2.16"],
+      availability: &target_available_for_nif_version?/2
     ]
     # ...
   ]
@@ -116,7 +117,7 @@ There're two sub-keys for `make_precompiler_nif_versions`:
 
 - `versions` 
 - `fallback_version`
-- `versions_for_target`
+- `availability`
 
 ##### `versions` sub-key
 
@@ -164,45 +165,20 @@ make_precompiler_nif_versions: [
 
 The above example also demonstrates how to use the `fallback_version` sub-key to provide better support for newer Erlang/OTP versions for some targets (in this case, targets with `aarch64` as part of their name) while still fallback to older NIF versions for other targets.
 
+##### `availability` sub-key
 
-##### `versions_for_target` sub-key
+For some platforms maybe we only have precompiled artefacts after a certain NIF version, say for x86_64 Windows we have precompiled artefacts available when NIF version >= `2.16` while other platforms have precompiled artefacts available from NIF version >= `2.15`.
 
-The `versions_for_target` sub-key is a function that provides a list of NIF versions that are available for a specific target. The function should accept one argument, `target`, and return a list of NIF versions that are available for the target.
-
-The default value of `versions_for_target` is retrieved from the `versions` sub-key. If the `versions` sub-key is not set, then the default value of `versions_for_target` is `["#{:erlang.system_info(:nif_version)}"]`.
-
-```elixir
-Mix.Project.config()[:make_precompiler_nif_versions][:versions] || []
-```
-
-This information is used to determine all available precompiled artefacts and is used to fetch all of them and generate the checksum file.
+In such case we can inform `:elixir_make` that Windows targets don't have precompiled artefacts available except for NIF version `2.16` by passing a function to the `availability` sub-key. This function should accept two arguments, `target` and `nif_version`, and returns a boolean value indicating whether the precompiled artefacts for the target and NIF version are available.
 
 ```elixir
-make_precompiler_nif_versions: [
-  versions: ["2.16", "2.17"],
-  fallback_version: fn target, current_nif_version, target_versions ->
-    if current_nif_version >= "2.19" do
-      # compile from source for all targets if NIF version >= 2.19
-      :compile
-    else
-      # reuse precompiled artefacts for NIF version 2.17
-      # for all aaarch64 targets
-      if String.contains?(target, "aarch64") do
-        "2.17"
-      else
-        # use NIF version 2.16 for other targets
-        "2.16"
-      end
-    end
-  end,
-  versions_for_target: fn target ->
-    if String.contains?(target, "aarch64") do
-      ["2.16", "2.17"]
-    else
-      ["2.16"]
-    end
+defp target_available_for_nif_version?(target, nif_version) do
+  if String.contains?(target, "windows") do
+    nif_version == "2.16"
+  else
+    true
   end
-]
+end
 ```
 
 ##### Use a minimal NIF version for all targets
