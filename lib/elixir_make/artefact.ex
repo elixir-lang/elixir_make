@@ -227,25 +227,19 @@ defmodule ElixirMake.Artefact do
         fallback_version = nif_versions[:fallback_version] || &find_nif_version/3
         nif_version_to_use = fallback_version.(current_target, current_nif_version, versions)
 
-        case nif_version_to_use do
-          :compile ->
-            {:error, :compile_from_source}
+        available_urls = available_target_urls(config, precompiler)
+        target_at_nif_version = {current_target, nif_version_to_use}
 
-          _ ->
-            available_urls = available_target_urls(config, precompiler)
-            target_at_nif_version = {current_target, nif_version_to_use}
+        case List.keyfind(available_urls, target_at_nif_version, 0) do
+          {^target_at_nif_version, download_url} ->
+            {:ok, current_target, download_url}
 
-            case List.keyfind(available_urls, target_at_nif_version, 0) do
-              {^target_at_nif_version, download_url} ->
-                {:ok, current_target, download_url}
+          nil ->
+            available_targets = Enum.map(available_urls, fn {target, _url} -> target end)
 
-              nil ->
-                available_targets = Enum.map(available_urls, fn {target, _url} -> target end)
-
-                {:error,
-                 {:unavailable_target, current_target,
-                  "cannot find download url for current target `#{inspect(current_target)}`. Available targets are: #{inspect(available_targets)}"}}
-            end
+            {:error,
+             {:unavailable_target, current_target,
+              "cannot find download url for current target `#{inspect(current_target)}`. Available targets are: #{inspect(available_targets)}"}}
         end
 
       {:error, msg} ->
