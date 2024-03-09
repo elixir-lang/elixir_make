@@ -66,26 +66,12 @@ defmodule ElixirMake.Artefact do
   end
 
   defp archive_filename(config, target, nif_version) do
-    precompiler_archive_filename = config[:make_precompiler_archive_filename] || :default
-
     case config[:make_precompiler] do
       {:nif, _} ->
-        case precompiler_archive_filename do
-          func when is_function(func, 1) ->
-            func.(target: target)
-
-          _ ->
-            "#{config[:app]}-nif-#{nif_version}-#{target}-#{config[:version]}.tar.gz"
-        end
+        "#{config[:app]}-nif-#{nif_version}-#{target}-#{config[:version]}.tar.gz"
 
       {type, _} ->
-        case precompiler_archive_filename do
-          func when is_function(func, 1) ->
-            func.(target: target)
-
-          _ ->
-            "#{config[:app]}-#{type}-#{target}-#{config[:version]}.tar.gz"
-        end
+        "#{config[:app]}-#{type}-#{target}-#{config[:version]}.tar.gz"
     end
   end
 
