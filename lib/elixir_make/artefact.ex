@@ -151,6 +151,7 @@ defmodule ElixirMake.Artefact do
       current_nif_version
     else
       {major, minor} = nif_version_to_tuple(current_nif_version)
+
       # Get all matching major versions, earlier than the current version
       # and their distance. We want the closest (smallest distance).
       candidates =
