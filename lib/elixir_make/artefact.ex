@@ -187,13 +187,26 @@ defmodule ElixirMake.Artefact do
     Enum.reduce(targets, [], fn target, archives ->
       archive_filenames =
         Enum.reduce(versions, [], fn nif_version_for_target, acc ->
-          archive_filename = archive_filename(config, target, nif_version_for_target)
+          availability = nif_versions[:availability]
 
-          [
-            {{target, nif_version_for_target},
-             String.replace(url_template, "@{artefact_filename}", archive_filename)}
-            | acc
-          ]
+          available? =
+            if is_function(availability, 2) do
+              availability.(target, nif_version_for_target)
+            else
+              true
+            end
+
+          if available? do
+            archive_filename = archive_filename(config, target, nif_version_for_target)
+
+            [
+              {{target, nif_version_for_target},
+               String.replace(url_template, "@{artefact_filename}", archive_filename)}
+              | acc
+            ]
+          else
+            acc
+          end
         end)
 
       archive_filenames ++ archives
