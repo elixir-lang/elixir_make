@@ -224,20 +224,8 @@ defmodule ElixirMake.Artefact do
             [versions: []]
 
         versions = nif_versions[:versions]
-        fallback_version = nif_versions[:fallback_version]
-
-        nif_version_to_use =
-          case find_nif_version(current_nif_version, versions) do
-            :no_candidates ->
-              if is_function(fallback_version, 3) do
-                fallback_version.(current_target, current_nif_version, versions)
-              else
-                current_nif_version
-              end
-
-            version when is_binary(version) ->
-              version
-          end
+        fallback_version = nif_versions[:fallback_version] || &find_nif_version/3
+        nif_version_to_use = fallback_version.(current_target, current_nif_version, versions)
 
         case nif_version_to_use do
           :compile ->
