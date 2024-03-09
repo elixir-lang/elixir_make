@@ -213,7 +213,7 @@ defmodule ElixirMake.Artefact do
 
           [
             {{target, nif_version_for_target},
-              String.replace(url_template, "@{artefact_filename}", archive_filename)}
+             String.replace(url_template, "@{artefact_filename}", archive_filename)}
             | acc
           ]
         end)
