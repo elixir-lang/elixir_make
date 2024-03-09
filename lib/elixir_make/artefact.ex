@@ -146,24 +146,20 @@ defmodule ElixirMake.Artefact do
     {String.to_integer(major), String.to_integer(minor)}
   end
 
-  defp find_nif_version(_current_target, current_nif_version, versions) do
-    if current_nif_version in versions do
-      current_nif_version
-    else
-      {major, minor} = nif_version_to_tuple(current_nif_version)
+  defp fallback_version(_current_target, current_nif_version, versions) do
+    {major, minor} = nif_version_to_tuple(current_nif_version)
 
-      # Get all matching major versions, earlier than the current version
-      # and their distance. We want the closest (smallest distance).
-      candidates =
-        for version <- versions,
-            {^major, candidate_minor} <- [nif_version_to_tuple(version)],
-            candidate_minor <= minor,
-            do: {minor - candidate_minor, version}
+    # Get all matching major versions, earlier than the current version
+    # and their distance. We want the closest (smallest distance).
+    candidates =
+      for version <- versions,
+          {^major, candidate_minor} <- [nif_version_to_tuple(version)],
+          candidate_minor <= minor,
+          do: {minor - candidate_minor, version}
 
-      case Enum.sort(candidates) do
-        [{_, version} | _] -> version
-        _ -> current_nif_version
-      end
+    case Enum.sort(candidates) do
+      [{_, version} | _] -> version
+      _ -> current_nif_version
     end
   end
 
@@ -225,8 +221,14 @@ defmodule ElixirMake.Artefact do
             [versions: []]
 
         versions = nif_versions[:versions]
-        fallback_version = nif_versions[:fallback_version] || (&find_nif_version/3)
-        nif_version_to_use = fallback_version.(current_target, current_nif_version, versions)
+
+        nif_version_to_use =
+          if current_nif_version in versions do
+            current_nif_version
+          else
+            fallback_version = nif_versions[:fallback_version] || (&fallback_version/3)
+            fallback_version.(current_target, current_nif_version, versions)
+          end
 
         available_urls = available_target_urls(config, precompiler)
         target_at_nif_version = {current_target, nif_version_to_use}
