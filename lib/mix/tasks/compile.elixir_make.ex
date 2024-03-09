@@ -167,6 +167,9 @@ defmodule Mix.Tasks.Compile.ElixirMake do
                   :compile
                 end
 
+              :compile_from_source ->
+                :compile
+
               _ ->
                 Mix.shell().error("""
                 Error happened while installing #{app} from precompiled binary: #{inspect(message)}.
