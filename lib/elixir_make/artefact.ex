@@ -243,7 +243,7 @@ defmodule ElixirMake.Artefact do
       {:ok, current_target} ->
         nif_versions =
           config[:make_precompiler_nif_versions] ||
-            [versions: [current_nif_version]]
+            [versions: []]
 
         versions = nif_versions[:versions]
         fallback_version = nif_versions[:fallback_version]

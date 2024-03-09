@@ -105,121 +105,115 @@ Directory structures and symbolic links are preserved.
 
 #### `make_precompiler_nif_versions` (optional config key)
 
-The third optional config key is `make_precompiler_nif_versions`. 
+The third optional config key is `make_precompiler_nif_versions`, which configures `elixir_make` on how to compile and reuse precompiled binaries.
 
-There are two ways configure `elixir_make` on how to compile and reuse precompiled binaries. 
+The default value for `make_precompiler_nif_versions` is 
 
-##### Use minimum NIF version (recommended)
-The first way is to use the minimum NIF version that is available to the current target. For example, if the NIF library
-only uses functions and feature available in NIF version `2.14`, the following configuration should be set:
+```elixir
+[versions: ["#{:erlang.system_info(:nif_version)}"]]
+```
+
+There're two sub-keys for `make_precompiler_nif_versions`:
+
+- `versions` 
+- `fallback_version`
+- `versions_for_target`
+
+##### `versions` sub-key
+
+The `versions` sub-key is a list of NIF versions that the precompiled artefacts are available for:
 
 ```elixir
 make_precompiler_nif_versions: [
-  use_minimum_version: true,
-  minimum_version: "2.14"
+  versions: ["2.16", "2.17"]
 ]
 ```
 
-In this way, we can reuse the same precompiled binary for newer Erlang/OTP versions instead of compiling the same code over and over again. And if the user is using the NIF library on an older Erlang/OTP version, `elixir_make` will try to compile the NIF library for the target.
+The default behaviour is to use the exact NIF version that is available to the current target. In the example above, the precompiled binaries are available for NIF version `2.16` and `2.17`. 
 
-Additionally, if the NIF library can optionally use functions and/or features that are only available in NIF version `2.17`, then the following configuration can be set to provide better support for newer Erlang/OTP versions while still providing support for older Erlang/OTP versions:
+- if the current host is using Erlang/OTP 24 or 25 (NIF version `2.16`), `elixir_make` will use the precompiled artefacts for NIF version `2.16`; 
+- if the current host is using Erlang/OTP 26 or 27 (NIF version `2.17`), `elixir_make` will use the precompiled artefacts for NIF version `2.17`; 
+- if the current host is using Erlang/OTP 23 or older (NIF version <= `2.16`), `elixir_make` will try to compile the NIF library for the target by default.
+- if the current host is using Erlang/OTP 28 or newer (NIF version <= `2.18`), `elixir_make` will use the precompiled artefacts for NIF version `2.17` instead of compiling the NIF library for the target by default.
+
+##### `fallback_version` sub-key
+
+The behaviour when `elixir_make` cannot find the exact NIF version of the precompiled binary can be customized by setting the `fallback_version` sub-key. The value of the `fallback_version` sub-key should be a function that accepts three arguments, `target`, `current_nif_version` and `target_versions`. The `target` is the target triplet (or other name format, defined by the precompiler of your choice), `current_nif_version` is the NIF version on the current host, and `target_versions` is a list of NIF versions that are available to the target.
+
+The `fallback_version` function should return either the NIF version that `elixir_make` should use from the `target_versions` list, or the atom `:compile` to indicate that the NIF library should be compiled for the target.
 
 ```elixir
 make_precompiler_nif_versions: [
-  use_minimum_version: true,
-  minimum_version: fn _target, current_nif_version ->
-    if current_nif_version >= "2.17" do
-        "2.17"
+  versions: ["2.16", "2.17"],
+  fallback_version: fn target, current_nif_version, target_versions ->
+    if current_nif_version >= "2.19" do
+      # compile from source for all targets if NIF version >= 2.19
+      :compile
     else
-        "2.14"
+      # reuse precompiled artefacts for NIF version 2.17
+      # for all aaarch64 targets
+      if String.contains?(target, "aarch64") do
+        "2.17"
+      else
+        # use NIF version 2.16 for other targets
+        "2.16"
+      end
     end
   end
 ]
 ```
 
-The above example tells `elixir_make` that it can reuse binaries compiled with NIF version `2.17` if the current host supports it; otherwise, it will use binaries compiled with NIF version `2.14`.
+The above example also demonstrates how to use the `fallback_version` sub-key to provide better support for newer Erlang/OTP versions for some targets (in this case, targets with `aarch64` as part of their name) while still fallback to older NIF versions for other targets.
 
-You can further change the above example to use different target name to control which feature set is available, for example, to use NIF version `2.17` for any `aarch64` targets and `2.14` for other targets:
 
-```elixir
-make_precompiler_nif_versions: [
-  use_minimum_version: true,
-  minimum_version: fn target, current_nif_version ->
-    if current_nif_version >= "2.17" and String.contains?(target, "aarch64") do
-        "2.17"
-    else
-        "2.14"
-    end
-  end
-]
-```
+##### `versions_for_target` sub-key
 
-However, please remember to set the `versions_for_target` sub-key to inform `:elixir_make` that the precompiled artefacts may have different NIF versions for different targets. For example,
+The `versions_for_target` sub-key is a function that provides a list of NIF versions that are available for a specific target. The function should accept one argument, `target`, and return a list of NIF versions that are available for the target.
+
+The default value of `versions_for_target` is retrieved from the `versions` sub-key. If the `versions` sub-key is not set, then the default value of `versions_for_target` is `["#{:erlang.system_info(:nif_version)}"]`.
 
 ```elixir
-make_precompiler_nif_versions: [
-  use_minimum_version: true,
-  minimum_version: fn target, current_nif_version ->
-    if current_nif_version >= "2.17" and String.contains?(target, "aarch64") do
-        "2.17"
-    else
-        "2.14"
-    end
-  end,
-  versions_for_target: fn target ->
-    if String.contains?(target, "aarch64") do
-      ["2.17", "2.14"]
-    else
-      ["2.14"]
-    end
-  end
-]
+Mix.Project.config()[:make_precompiler_nif_versions][:versions] || []
 ```
 
 This information is used to determine all available precompiled artefacts and is used to fetch all of them and generate the checksum file.
 
 ```elixir
 make_precompiler_nif_versions: [
-  use_minimum_version: true,
-  minimum_version: fn target, current_nif_version ->
-    if current_nif_version >= "2.17" do
-        "2.17"
+  versions: ["2.16", "2.17"],
+  fallback_version: fn target, current_nif_version, target_versions ->
+    if current_nif_version >= "2.19" do
+      # compile from source for all targets if NIF version >= 2.19
+      :compile
     else
-        "2.14"
+      # reuse precompiled artefacts for NIF version 2.17
+      # for all aaarch64 targets
+      if String.contains?(target, "aarch64") do
+        "2.17"
+      else
+        # use NIF version 2.16 for other targets
+        "2.16"
+      end
+    end
+  end,
+  versions_for_target: fn target ->
+    if String.contains?(target, "aarch64") do
+      ["2.16", "2.17"]
+    else
+      ["2.16"]
     end
   end
 ]
 ```
 
-##### Use exact NIF version
-The second (and the old) way is to use the exact NIF version that is available to the current target. In this case, a list of supported NIF versions should be set in key `versions`. For example, 
+##### Use a minimal NIF version for all targets
+
+However, if the NIF library only uses functions and/or features that are available since some NIF version, say `2.14`, for all targets, then we can simply set `versions` to `["2.14"]` and avoid compiling the same code over and over again for each NIF versions.
 
 ```elixir
-make_precompiler_nif_versions: [versions: ["2.14", "2.15", "2.16"]]
-```
-
-The above example tells `elixir_make` that precompiled artefacts are available for these NIF versions. If there's no precompiled artefacts available on the current host, `elixir_make` will try to compile the NIF library.
-
-If you'd like to aim for an older NIF version, say `2.15` for Erlang/OTP 23 and 24, then you need to setup CI correspondingly and set the value of this key to `[versions: ["2.15", "2.16"]]`. This optional key will only be checked when downloading precompiled artefacts.
-
-For some platforms maybe we only have precompiled artefacts after a certain NIF version, say for x86_64 Windows we have precompiled artefacts available when NIF version >= `2.16` while other platforms have precompiled artefacts available from NIF version >= `2.15`.
-
-In such case we can inform `:elixir_make` that Windows targets don't have precompiled artefacts available except for NIF version `2.16` by passing a function to the `availability` sub-key.
-
-```elixir
-defp target_available_for_nif_version?(target, nif_version) do
-  if String.contains?(target, "windows") do
-    nif_version == "2.16"
-  else
-    true
-  end
-end
-```
-
-The default value for `make_precompiler_nif_versions` is 
-
-```elixir
-[versions: ["#{:erlang.system_info(:nif_version)}"]]
+make_precompiler_nif_versions: [
+  versions: ["2.14"]
+]
 ```
 
 ### (Optional) Customise Precompilation Targets
