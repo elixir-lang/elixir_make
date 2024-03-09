@@ -105,17 +105,49 @@ Directory structures and symbolic links are preserved.
 
 #### `make_precompiler_nif_versions` (optional config key)
 
-The third optional config key is `make_precompiler_nif_versions`. The default value is 
+The third optional config key is `make_precompiler_nif_versions`, which configures `elixir_make` on how to compile and reuse precompiled binaries.
+
+The default value for `make_precompiler_nif_versions` is 
 
 ```elixir
 [versions: ["#{:erlang.system_info(:nif_version)}"]]
 ```
 
-If you'd like to aim for an older NIF version, say `2.15` for Erlang/OTP 23 and 24, then you need to setup CI correspondingly and set the value of this key to `[versions: ["2.15", "2.16"]]`. This optional key will only be checked when downloading precompiled artefacts.
+There're three sub-keys for `make_precompiler_nif_versions`:
+
+- `versions` 
+- `fallback_version`
+- `availability`
+
+##### `versions` sub-key
+
+The `versions` sub-key is a list of NIF versions that the precompiled artefacts are available for:
+
+```elixir
+make_precompiler_nif_versions: [
+  versions: ["2.15", "2.16"]
+]
+```
+
+The default behaviour is to use the exact NIF version that is available to the current target. If one is not available, it may fallback (see `fallback_version` next) to the highest matching major version prior to the current version. For example:
+
+- if the current host is using Erlang/OTP 23 (NIF version `2.15`), `elixir_make` will use the precompiled artefacts for NIF version `2.15`; 
+- if the current host is using Erlang/OTP 24 or 25 (NIF version `2.16`), `elixir_make` will use the precompiled artefacts for NIF version `2.16`; 
+- if the current host is using Erlang/OTP 26 or newer (NIF version `2.17`), `elixir_make` will fallback to the precompiled artefacts for NIF version `2.16`;
+
+If the current host is using Erlang/OTP with a new major Erlang NIF version (NIF version `3.0`) or anything earlier than the precompiled versions (`2.14`), `elixir_make` will compile from scratch.
+
+##### `fallback_version` sub-key
+
+The behaviour when `elixir_make` cannot find the exact NIF version of the precompiled binary can be customized by setting the `fallback_version` sub-key. The value of the `fallback_version` sub-key should be a function that accepts three arguments, `target`, `current_nif_version` and `target_versions`. The `target` is the target triplet (or other name format, defined by the precompiler of your choice), `current_nif_version` is the NIF version on the current host, and `target_versions` is a list of NIF versions that are available to the target.
+
+The `fallback_version` function should return either the NIF version that `elixir_make` should use from the `target_versions` list or the `current_nif_version`.
+
+##### `availability` sub-key
 
 For some platforms maybe we only have precompiled artefacts after a certain NIF version, say for x86_64 Windows we have precompiled artefacts available when NIF version >= `2.16` while other platforms have precompiled artefacts available from NIF version >= `2.15`.
 
-In such case we can inform `:elixir_make` that Windows targets don't have precompiled artefacts available except for NIF version `2.16` by passing a function to the `availability` sub-key.
+In such case we can inform `:elixir_make` that Windows targets don't have precompiled artefacts available except for NIF version `2.16` by passing a function to the `availability` sub-key. This function should accept two arguments, `target` and `nif_version`, and returns a boolean value indicating whether the precompiled artefacts for the target and NIF version are available.
 
 ```elixir
 defp target_available_for_nif_version?(target, nif_version) do

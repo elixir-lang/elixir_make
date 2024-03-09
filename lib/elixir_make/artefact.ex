@@ -141,6 +141,28 @@ defmodule ElixirMake.Artefact do
 
   ## Archive/NIF urls
 
+  defp nif_version_to_tuple(nif_version) do
+    [major, minor | _] = String.split(nif_version, ".")
+    {String.to_integer(major), String.to_integer(minor)}
+  end
+
+  defp fallback_version(_current_target, current_nif_version, versions) do
+    {major, minor} = nif_version_to_tuple(current_nif_version)
+
+    # Get all matching major versions, earlier than the current version
+    # and their distance. We want the closest (smallest distance).
+    candidates =
+      for version <- versions,
+          {^major, candidate_minor} <- [nif_version_to_tuple(version)],
+          candidate_minor <= minor,
+          do: {minor - candidate_minor, version}
+
+    case Enum.sort(candidates) do
+      [{_, version} | _] -> version
+      _ -> current_nif_version
+    end
+  end
+
   @doc """
   Returns all available {{target, nif_version}, url} pairs available.
   """
@@ -151,27 +173,31 @@ defmodule ElixirMake.Artefact do
       config[:make_precompiler_url] ||
         Mix.raise("`make_precompiler_url` is not specified in `project`")
 
+    current_nif_version = "#{:erlang.system_info(:nif_version)}"
+
     nif_versions =
       config[:make_precompiler_nif_versions] ||
-        [versions: ["#{:erlang.system_info(:nif_version)}"]]
+        [versions: [current_nif_version]]
+
+    versions = nif_versions[:versions]
 
     Enum.reduce(targets, [], fn target, archives ->
       archive_filenames =
-        Enum.reduce(nif_versions[:versions], [], fn nif_version, acc ->
+        Enum.reduce(versions, [], fn nif_version_for_target, acc ->
           availability = nif_versions[:availability]
 
           available? =
             if is_function(availability, 2) do
-              availability.(target, nif_version)
+              availability.(target, nif_version_for_target)
             else
               true
             end
 
           if available? do
-            archive_filename = archive_filename(config, target, nif_version)
+            archive_filename = archive_filename(config, target, nif_version_for_target)
 
             [
-              {{target, nif_version},
+              {{target, nif_version_for_target},
                String.replace(url_template, "@{artefact_filename}", archive_filename)}
               | acc
             ]
@@ -187,11 +213,25 @@ defmodule ElixirMake.Artefact do
   @doc """
   Returns the url for the current target.
   """
-  def current_target_url(config, precompiler, nif_version) do
+  def current_target_url(config, precompiler, current_nif_version) do
     case precompiler.current_target() do
       {:ok, current_target} ->
+        nif_versions =
+          config[:make_precompiler_nif_versions] ||
+            [versions: []]
+
+        versions = nif_versions[:versions]
+
+        nif_version_to_use =
+          if current_nif_version in versions do
+            current_nif_version
+          else
+            fallback_version = nif_versions[:fallback_version] || (&fallback_version/3)
+            fallback_version.(current_target, current_nif_version, versions)
+          end
+
         available_urls = available_target_urls(config, precompiler)
-        target_at_nif_version = {current_target, nif_version}
+        target_at_nif_version = {current_target, nif_version_to_use}
 
         case List.keyfind(available_urls, target_at_nif_version, 0) do
           {^target_at_nif_version, download_url} ->
