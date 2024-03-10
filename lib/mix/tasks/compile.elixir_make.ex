@@ -213,8 +213,8 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     nif_version = "#{:erlang.system_info(:nif_version)}"
 
     case Artefact.current_target_url(config, precompiler, nif_version) do
-      {:ok, target, url} ->
-        archived_fullpath = Artefact.archive_path(config, target, nif_version)
+      {:ok, target, nif_version_to_use, url} ->
+        archived_fullpath = Artefact.archive_path(config, target, nif_version_to_use)
 
         unless File.exists?(archived_fullpath) do
           Mix.shell().info("Downloading precompiled NIF to #{archived_fullpath}")
