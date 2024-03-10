@@ -146,13 +146,14 @@ defmodule ElixirMake.Artefact do
     {String.to_integer(major), String.to_integer(minor)}
   end
 
-  defp fallback_version(_current_target, current_nif_version, versions) do
+  defp fallback_version(opts) do
+    current_nif_version = "#{:erlang.system_info(:nif_version)}"
     {major, minor} = nif_version_to_tuple(current_nif_version)
 
     # Get all matching major versions, earlier than the current version
     # and their distance. We want the closest (smallest distance).
     candidates =
-      for version <- versions,
+      for version <- opts.versions,
           {^major, candidate_minor} <- [nif_version_to_tuple(version)],
           candidate_minor <= minor,
           do: {minor - candidate_minor, version}
@@ -160,6 +161,16 @@ defmodule ElixirMake.Artefact do
     case Enum.sort(candidates) do
       [{_, version} | _] -> version
       _ -> current_nif_version
+    end
+  end
+
+  defp get_versions_for_target(versions, current_target) do
+    case versions do
+      version_list when is_list(version_list) ->
+        version_list
+
+      version_func when is_function(version_func, 1) ->
+        version_func.(%{target: current_target})
     end
   end
 
@@ -179,15 +190,19 @@ defmodule ElixirMake.Artefact do
       config[:make_precompiler_nif_versions] ||
         [versions: [current_nif_version]]
 
-    versions = nif_versions[:versions]
-
     Enum.reduce(targets, [], fn target, archives ->
+      versions = get_versions_for_target(nif_versions[:versions], target)
+
       archive_filenames =
         Enum.reduce(versions, [], fn nif_version_for_target, acc ->
           availability = nif_versions[:availability]
 
           available? =
             if is_function(availability, 2) do
+              IO.warn(
+                ":availability key in elixir_make is deprecated, pass a function as :versions instead"
+              )
+
               availability.(target, nif_version_for_target)
             else
               true
@@ -220,14 +235,15 @@ defmodule ElixirMake.Artefact do
           config[:make_precompiler_nif_versions] ||
             [versions: []]
 
-        versions = nif_versions[:versions]
+        versions = get_versions_for_target(nif_versions[:versions], current_target)
 
         nif_version_to_use =
           if current_nif_version in versions do
             current_nif_version
           else
-            fallback_version = nif_versions[:fallback_version] || (&fallback_version/3)
-            fallback_version.(current_target, current_nif_version, versions)
+            fallback_version = nif_versions[:fallback_version] || (&fallback_version/1)
+            opts = %{target: current_target, versions: versions}
+            fallback_version.(opts)
           end
 
         available_urls = available_target_urls(config, precompiler)
