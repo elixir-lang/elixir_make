@@ -194,11 +194,31 @@ defmodule ElixirMake.Artefact do
       versions = get_versions_for_target(nif_versions[:versions], target)
 
       archive_filenames =
-        Enum.map(versions, fn nif_version_for_target ->
-          archive_filename = archive_filename(config, target, nif_version_for_target)
+        Enum.reduce(versions, [], fn nif_version_for_target, acc ->
+          availability = nif_versions[:availability]
 
-          {{target, nif_version_for_target},
-           String.replace(url_template, "@{artefact_filename}", archive_filename)}
+          available? =
+            if is_function(availability, 2) do
+              IO.warn(
+                ":availability key in elixir_make is deprecated, pass a function as :versions instead"
+              )
+
+              availability.(target, nif_version_for_target)
+            else
+              true
+            end
+
+          if available? do
+            archive_filename = archive_filename(config, target, nif_version_for_target)
+
+            [
+              {{target, nif_version_for_target},
+               String.replace(url_template, "@{artefact_filename}", archive_filename)}
+              | acc
+            ]
+          else
+            acc
+          end
         end)
 
       archive_filenames ++ archives
