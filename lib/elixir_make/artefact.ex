@@ -170,7 +170,7 @@ defmodule ElixirMake.Artefact do
         version_list
 
       version_func when is_function(version_func, 1) ->
-        version_func.(%{:target => current_target})
+        version_func.(%{target: current_target})
     end
   end
 
@@ -242,7 +242,7 @@ defmodule ElixirMake.Artefact do
             current_nif_version
           else
             fallback_version = nif_versions[:fallback_version] || (&fallback_version/1)
-            opts = %{:target => current_target, :versions => versions}
+            opts = %{target: current_target, versions: versions}
             fallback_version.(opts)
           end
 
