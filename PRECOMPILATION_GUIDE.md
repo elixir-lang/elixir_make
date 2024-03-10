@@ -43,8 +43,7 @@ def project do
     make_precompiler_filename: "nif",
     make_precompiler_priv_paths: ["nif.*"],
     make_precompiler_nif_versions: [
-      versions: ["2.14", "2.15", "2.16"],
-      availability: &target_available_for_nif_version?/2
+      versions: ["2.14", "2.15", "2.16"]
     ]
     # ...
   ]
@@ -113,19 +112,37 @@ The default value for `make_precompiler_nif_versions` is
 [versions: ["#{:erlang.system_info(:nif_version)}"]]
 ```
 
-There're three sub-keys for `make_precompiler_nif_versions`:
+There're two sub-keys for `make_precompiler_nif_versions`:
 
 - `versions` 
 - `fallback_version`
-- `availability`
 
 ##### `versions` sub-key
 
-The `versions` sub-key is a list of NIF versions that the precompiled artefacts are available for:
+The `versions` sub-key is either a list of NIF versions of a function that returns a list of NIF versions that the precompiled artefacts are available for:
 
 ```elixir
 make_precompiler_nif_versions: [
   versions: ["2.15", "2.16"]
+]
+```
+
+The above example tells `:elixir_make` that all targets have precompiled artefacts for NIF version `2.15` and `2.16`.
+
+For some platforms maybe we only have precompiled artefacts after a certain NIF version, say for x86_64 Windows we have precompiled artefacts available when NIF version >= `2.16` while other platforms have precompiled artefacts available from NIF version >= `2.15`.
+
+In such case we can inform `:elixir_make` that Windows targets don't have precompiled artefacts available except for NIF version `2.16` by passing a function to the `availability` sub-key. This function should accept two arguments, `target` and `nif_version`, and returns a boolean value indicating whether the precompiled artefacts for the target and NIF version are available.
+
+```elixir
+make_precompiler_nif_versions: [
+  versions: fn opts ->
+    target = opts.target
+    if String.contains?(target, "windows") do
+      ["2.16"]
+    else
+      ["2.15", "2.16"]
+    end
+  end
 ]
 ```
 
@@ -139,25 +156,11 @@ If the current host is using Erlang/OTP with a new major Erlang NIF version (NIF
 
 ##### `fallback_version` sub-key
 
-The behaviour when `elixir_make` cannot find the exact NIF version of the precompiled binary can be customized by setting the `fallback_version` sub-key. The value of the `fallback_version` sub-key should be a function that accepts three arguments, `target`, `current_nif_version` and `target_versions`. The `target` is the target triplet (or other name format, defined by the precompiler of your choice), `current_nif_version` is the NIF version on the current host, and `target_versions` is a list of NIF versions that are available to the target.
+The behaviour when `elixir_make` cannot find the exact NIF version of the precompiled binary can be customized by setting the `fallback_version` sub-key.
 
-The `fallback_version` function should return either the NIF version that `elixir_make` should use from the `target_versions` list or the `current_nif_version`.
+The value of the `fallback_version` sub-key should be a function that accepts one argument, `opts`, which is a map that include one key `target`. The `target` is the target triplet (or other naming format, defined by the precompiler of your choice).
 
-##### `availability` sub-key
-
-For some platforms maybe we only have precompiled artefacts after a certain NIF version, say for x86_64 Windows we have precompiled artefacts available when NIF version >= `2.16` while other platforms have precompiled artefacts available from NIF version >= `2.15`.
-
-In such case we can inform `:elixir_make` that Windows targets don't have precompiled artefacts available except for NIF version `2.16` by passing a function to the `availability` sub-key. This function should accept two arguments, `target` and `nif_version`, and returns a boolean value indicating whether the precompiled artefacts for the target and NIF version are available.
-
-```elixir
-defp target_available_for_nif_version?(target, nif_version) do
-  if String.contains?(target, "windows") do
-    nif_version == "2.16"
-  else
-    true
-  end
-end
-```
+The `fallback_version` function should return the NIF version that is available and should be chosen for the current target.
 
 ### (Optional) Customise Precompilation Targets
 
