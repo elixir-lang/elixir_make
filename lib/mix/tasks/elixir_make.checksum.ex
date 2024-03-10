@@ -57,8 +57,8 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
           current_nif_version = "#{:erlang.system_info(:nif_version)}"
 
           case Artefact.current_target_url(config, precompiler, current_nif_version) do
-            {:ok, target, url} ->
-              [{{target, current_nif_version}, url}]
+            {:ok, target, nif_version_to_use, url} ->
+              [{{target, nif_version_to_use}, url}]
 
             {:error, {:unavailable_target, current_target, error}} ->
               recover =
