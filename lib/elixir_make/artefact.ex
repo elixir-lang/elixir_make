@@ -251,7 +251,7 @@ defmodule ElixirMake.Artefact do
 
         case List.keyfind(available_urls, target_at_nif_version, 0) do
           {^target_at_nif_version, download_url} ->
-            {:ok, current_target, download_url}
+            {:ok, current_target, nif_version_to_use, download_url}
 
           nil ->
             available_targets = Enum.map(available_urls, fn {target, _url} -> target end)
