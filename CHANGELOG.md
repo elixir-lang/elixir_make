@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.8.2 (2024-03-10)
+
+  * Fix checksum error when checksuming NIF version
+
 ## v0.8.1 (2024-03-10)
 
   * Fix checksum error when falling back to a previous NIF version
