@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.8.0 (2024-03-10)
+
+  * Fallback to the previous compatible NIF version by default
+  * Deprecate availability in favor of passing a function to `:versions`
+
 ## v0.7.8 (2024-01-17)
 
   * List certifi as an optional dependency
