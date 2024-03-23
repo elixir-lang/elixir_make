@@ -108,33 +108,16 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
           checksum_file_url = "#{url}.#{Atom.to_string(checksum_algo)}"
           artifact_checksum = Artefact.download(checksum_file_url)
 
-          from_checksum_file =
-            case artifact_checksum do
-              {:ok, body} ->
-                case String.split(body, " ", trim: true) do
-                  [checksum, basename] ->
-                    {:ok,
-                     {:checksum, url,
-                      %Artefact{
-                        basename: basename,
-                        checksum: checksum,
-                        checksum_algo: checksum_algo
-                      }}}
-
-                  _ ->
-                    :download_and_compute
-                end
-
-              _ ->
-                :download_and_compute
-            end
-
-          case from_checksum_file do
-            {:ok, packed} ->
-              packed
-
-            _ ->
-              {:download, url, Artefact.download(url)}
+          with {:ok, body} <- artifact_checksum,
+               [checksum, basename] <- String.split(body, " ", trim: true) do
+            {:checksum, url,
+             %Artefact{
+               basename: basename,
+               checksum: checksum,
+               checksum_algo: checksum_algo
+             }}
+          else
+            _ -> {:download, url, Artefact.download(url)}
           end
         end,
         timeout: :infinity,
@@ -144,7 +127,7 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
     cache_dir = Artefact.cache_dir()
 
     Enum.flat_map(tasks, fn
-      {:ok, :checksum, _url, artefact} ->
+      {:ok, {:checksum, _url, artefact}} ->
         Mix.shell().info(
           "NIF checksum file with checksum #{artefact.checksum} (#{artefact.checksum_algo})"
         )
