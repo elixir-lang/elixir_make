@@ -144,7 +144,7 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
     cache_dir = Artefact.cache_dir()
 
     Enum.flat_map(tasks, fn
-      {:ok, :checksum, url, artefact} ->
+      {:ok, :checksum, _url, artefact} ->
         Mix.shell().info(
           "NIF checksum file with checksum #{artefact.checksum} (#{artefact.checksum_algo})"
         )
