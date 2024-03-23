@@ -24,12 +24,32 @@ defmodule ElixirMake.Artefact do
   end
 
   @doc """
+  Returns the checksum algorithm
+  """
+  def checksum_algo do
+    @checksum_algo
+  end
+
+  @doc """
   Computes the checksum and artefact for the given contents.
   """
   def checksum(basename, contents) do
-    hash = :crypto.hash(@checksum_algo, contents)
+    hash = :crypto.hash(checksum_algo(), contents)
     checksum = Base.encode16(hash, case: :lower)
-    %Artefact{basename: basename, checksum: checksum, checksum_algo: @checksum_algo}
+    %Artefact{basename: basename, checksum: checksum, checksum_algo: checksum_algo()}
+  end
+
+  @doc """
+  Writes checksum for the target to disk.
+  """
+  def write_checksum_for_target!(%Artefact{
+        basename: basename,
+        checksum: checksum,
+        checksum_algo: checksum_algo
+      }) do
+    cache_dir = Artefact.cache_dir()
+    file = Path.join(cache_dir, "#{basename}.#{Atom.to_string(checksum_algo)}")
+    File.write!(file, [checksum, "  ", basename, "\n"])
   end
 
   @doc """
