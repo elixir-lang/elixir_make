@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.8.3 (2024-03-24)
+
+  * Support storing checksum of individial precompilation artefacts
+
 ## v0.8.2 (2024-03-10)
 
   * Fix checksum error when checksuming NIF version
