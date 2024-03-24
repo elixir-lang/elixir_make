@@ -112,7 +112,7 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
                [checksum, basename] <- String.split(body, " ", trim: true) do
             {:checksum, url,
              %Artefact{
-               basename: basename,
+               basename: String.trim(basename),
                checksum: checksum,
                checksum_algo: checksum_algo
              }}
