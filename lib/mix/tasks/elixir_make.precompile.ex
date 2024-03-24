@@ -48,6 +48,8 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
                 precompiler.post_precompile_target(target)
               end
 
+              Artefact.write_checksum_for_target!(precompiled_artefacts)
+
               precompiled_artefacts
 
             {:error, msg} ->

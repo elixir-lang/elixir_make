@@ -103,38 +103,62 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
     tasks =
       Task.async_stream(
         urls,
-        fn {{_target, _nif_version}, url} -> {url, Artefact.download(url)} end,
+        fn {{_target, _nif_version}, url} ->
+          checksum_algo = Artefact.checksum_algo()
+          checksum_file_url = "#{url}.#{Atom.to_string(checksum_algo)}"
+          artifact_checksum = Artefact.download(checksum_file_url)
+
+          with {:ok, body} <- artifact_checksum,
+               [checksum, basename] <- String.split(body, " ", trim: true) do
+            {:checksum, url,
+             %Artefact{
+               basename: String.trim(basename),
+               checksum: checksum,
+               checksum_algo: checksum_algo
+             }}
+          else
+            _ -> {:download, url, Artefact.download(url)}
+          end
+        end,
         timeout: :infinity,
         ordered: false
       )
 
     cache_dir = Artefact.cache_dir()
 
-    Enum.flat_map(tasks, fn {:ok, {url, download}} ->
-      case download do
-        {:ok, body} ->
-          basename = basename_from_url(url)
-          path = Path.join(cache_dir, basename)
-          File.write!(path, body)
-          artefact = Artefact.checksum(basename, body)
+    Enum.flat_map(tasks, fn
+      {:ok, {:checksum, _url, artefact}} ->
+        Mix.shell().info(
+          "NIF checksum file with checksum #{artefact.checksum} (#{artefact.checksum_algo})"
+        )
 
-          Mix.shell().info(
-            "NIF cached at #{path} with checksum #{artefact.checksum} (#{artefact.checksum_algo})"
-          )
+        [artefact]
 
-          [artefact]
+      {:ok, {:download, url, download}} ->
+        case download do
+          {:ok, body} ->
+            basename = basename_from_url(url)
+            path = Path.join(cache_dir, basename)
+            File.write!(path, body)
+            artefact = Artefact.checksum(basename, body)
 
-        result ->
-          if ignore_unavailable? do
-            msg = "Skipped unavailable NIF artifact. Reason: #{inspect(result)}"
-            Mix.shell().info(msg)
-          else
-            msg = "Could not finish the download of NIF artifacts. Reason: #{inspect(result)}"
-            Mix.shell().error(msg)
-          end
+            Mix.shell().info(
+              "NIF cached at #{path} with checksum #{artefact.checksum} (#{artefact.checksum_algo})"
+            )
 
-          []
-      end
+            [artefact]
+
+          result ->
+            if ignore_unavailable? do
+              msg = "Skipped unavailable NIF artifact. Reason: #{inspect(result)}"
+              Mix.shell().info(msg)
+            else
+              msg = "Could not finish the download of NIF artifacts. Reason: #{inspect(result)}"
+              Mix.shell().error(msg)
+            end
+
+            []
+        end
     end)
   end
 
