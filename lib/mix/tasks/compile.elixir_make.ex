@@ -70,6 +70,11 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     * `:make_precompiler_filename` - the filename of the compiled artefact
       without its extension. Defaults to the app name.
 
+    * `:make_precompiler_downloader` - a module implementing the `ElixirMake.Downloader`
+      behaviour. You can use this to customize how the precompiled artefacts
+      are downloaded, for example, to add HTTP authentication or to download
+      from an SFTP server. The default implementation uses `:httpc`.
+
     * `:make_force_build` - if build should be forced even if precompiled artefacts
       are available. Defaults to true if the app has a `-dev` version flag.
 
@@ -219,7 +224,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
         unless File.exists?(archived_fullpath) do
           Mix.shell().info("Downloading precompiled NIF to #{archived_fullpath}")
 
-          with {:ok, archived_data} <- Artefact.download(url) do
+          with {:ok, archived_data} <- Artefact.download(config, url) do
             File.mkdir_p(Path.dirname(archived_fullpath))
             File.write(archived_fullpath, archived_data)
           end

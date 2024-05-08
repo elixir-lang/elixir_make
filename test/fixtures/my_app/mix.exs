@@ -10,7 +10,7 @@ defmodule MyApp.Precompiler do
   @behaviour ElixirMake.Precompiler
 
   @impl true
-  def current_target, do: "target"
+  def current_target, do: {:ok, "target"}
 
   @impl true
   def all_supported_targets(_), do: ["target"]
