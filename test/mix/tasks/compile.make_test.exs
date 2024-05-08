@@ -13,6 +13,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
   end
 
   setup do
+    Mix.Task.reenable("elixir_make.precompile")
     System.delete_env("MAKE")
     System.delete_env("ERL_EI_LIBDIR")
     System.delete_env("ERL_EI_INCLUDE_DIR")
@@ -24,6 +25,8 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
       File.rm_rf!("Makefile")
       File.rm_rf!("_build")
       File.rm_rf!("priv")
+      File.rm_rf!("cache")
+      File.rm_rf!("dl")
     end)
 
     :ok
@@ -378,11 +381,62 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
     end)
   end
 
+  test "custom downloader" do
+    in_fixture(fn ->
+      File.mkdir!("priv")
+
+      File.write("Makefile", """
+      all:
+      \t@touch priv/my_app
+      \t@echo "all"
+      """)
+
+      with_project_config(
+        [
+          make_precompiler: {:nif, MyApp.Precompiler},
+          make_precompiler_url: "https://example.com/@{artefact_filename}",
+          make_precompiler_downloader: MyApp.Downloader
+        ],
+        fn ->
+          custom_downloader_dir = "./dl"
+          cache_dir = "./cache"
+          System.put_env("ELIXIR_MAKE_CACHE_DIR", cache_dir)
+
+          # precompile
+          output =
+            capture_io(fn ->
+              Mix.Tasks.ElixirMake.Precompile.run([])
+            end)
+
+          assert output =~ "all\n"
+
+          # move cache to custom downloader dir
+          File.rename!(cache_dir, custom_downloader_dir)
+
+          # artifacts should be "downloaded" by the custom downloader
+          output = capture_io(fn -> run([]) end)
+          assert output =~ "Custom downloader downloading from https://example.com/my_app-nif-"
+        end
+      )
+    end)
+  end
+
   defp in_fixture(fun) do
     File.cd!(@fixture_project, fun)
   end
 
   defp with_project_config(config, fun) do
     Mix.Project.in_project(:my_app, @fixture_project, config, fn _ -> fun.() end)
+  end
+end
+
+defmodule MyApp.Downloader do
+  @behaviour ElixirMake.Downloader
+
+  @impl true
+  def download(url) do
+    IO.puts("Custom downloader downloading from #{url}")
+    path = String.replace(url, "https://example.com/", __DIR__ <> "/dl/")
+    File.read(path)
   end
 end

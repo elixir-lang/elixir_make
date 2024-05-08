@@ -84,7 +84,7 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
           Mix.raise("you need to specify either \"--all\" or \"--only-local\" flags")
       end
 
-    artefacts = download_and_checksum_all(urls, options)
+    artefacts = download_and_checksum_all(config, urls, options)
 
     if Keyword.get(options, :print, false) do
       artefacts
@@ -97,7 +97,7 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
     Artefact.write_checksums!(artefacts)
   end
 
-  defp download_and_checksum_all(urls, options) do
+  defp download_and_checksum_all(config, urls, options) do
     ignore_unavailable? = Keyword.get(options, :ignore_unavailable, false)
 
     tasks =
@@ -106,7 +106,7 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
         fn {{_target, _nif_version}, url} ->
           checksum_algo = Artefact.checksum_algo()
           checksum_file_url = "#{url}.#{Atom.to_string(checksum_algo)}"
-          artifact_checksum = Artefact.download(checksum_file_url)
+          artifact_checksum = Artefact.download(config, checksum_file_url)
 
           with {:ok, body} <- artifact_checksum,
                [checksum, basename] <- String.split(body, " ", trim: true) do
@@ -117,7 +117,7 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
                checksum_algo: checksum_algo
              }}
           else
-            _ -> {:download, url, Artefact.download(url)}
+            _ -> {:download, url, Artefact.download(config, url)}
           end
         end,
         timeout: :infinity,
