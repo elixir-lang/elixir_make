@@ -102,7 +102,9 @@ defmodule ElixirMake.Compiler do
   # as soon as `exec` prints them (using `IO.Stream`).
   defp cmd(exec, args, cwd, env, verbose?) do
     opts = [
-      into: IO.stream(:stdio, :line),
+      # There is no guarantee the command will return valid UTF-8,
+      # especially on Windows, so don't try to interpret the stream
+      into: IO.binstream(:stdio, :line),
       stderr_to_stdout: true,
       cd: cwd,
       env: env
