@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.4 (2024-06-04)
+
+  * Support configuring `make_precompiler_downloader`
+  * Support DragonFlyBSD
+  * Support non-UTF8 encoding from compilation (may happen on Windows)
+
 ## v0.8.3 (2024-03-24)
 
   * Support storing checksum of individial precompilation artefacts
