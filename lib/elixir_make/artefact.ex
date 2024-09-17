@@ -16,7 +16,7 @@ defmodule ElixirMake.Artefact do
     cache_dir =
       Path.expand(
         System.get_env("ELIXIR_MAKE_CACHE_DIR") ||
-          :filename.basedir(:user_cache, "", cache_opts)
+          :filename.basedir(:user_cache, "elixir_make", cache_opts)
       )
 
     File.mkdir_p!(cache_dir)
