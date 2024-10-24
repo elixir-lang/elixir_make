@@ -1,7 +1,7 @@
 defmodule ElixirMake.Mixfile do
   use Mix.Project
 
-  @version "0.8.4"
+  @version "0.9.0-dev"
   def project do
     [
       app: :elixir_make,
@@ -21,8 +21,6 @@ defmodule ElixirMake.Mixfile do
 
   defp deps do
     [
-      {:castore, "~> 0.1 or ~> 1.0", optional: true},
-      {:certifi, "~> 2.0", optional: true},
       {:ex_doc, "~> 0.20", only: :docs}
     ]
   end

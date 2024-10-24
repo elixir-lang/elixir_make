@@ -50,20 +50,15 @@ defmodule ElixirMake.Downloader.Httpc do
 
   defp cacerts_options do
     cond do
+      path = System.get_env("HEX_CACERTS_PATH") ->
+        [cacertfile: path]
+
       path = System.get_env("ELIXIR_MAKE_CACERT") ->
+        IO.warn("Setting ELIXIR_MAKE_CACERT is deprecated, please set HEX_CACERTS_PATH instead")
         [cacertfile: path]
 
       certs = otp_cacerts() ->
         [cacerts: certs]
-
-      Application.spec(:castore, :vsn) ->
-        [cacertfile: Application.app_dir(:castore, "priv/cacerts.pem")]
-
-      Application.spec(:certifi, :vsn) ->
-        [cacertfile: Application.app_dir(:certifi, "priv/cacerts.pem")]
-
-      path = cacerts_from_os() ->
-        [cacertfile: path]
 
       true ->
         warn_no_cacerts()
@@ -77,46 +72,14 @@ defmodule ElixirMake.Downloader.Httpc do
       try do
         :public_key.cacerts_get()
       rescue
-        _ ->
-          nil
+        _ -> nil
       end
     end
-  end
-
-  # https_opts and related code are taken from
-  # https://github.com/elixir-cldr/cldr_utils/blob/v2.19.1/lib/cldr/http/http.ex
-  @certificate_locations [
-    # Debian/Ubuntu/Gentoo etc.
-    "/etc/ssl/certs/ca-certificates.crt",
-
-    # Fedora/RHEL 6
-    "/etc/pki/tls/certs/ca-bundle.crt",
-
-    # OpenSUSE
-    "/etc/ssl/ca-bundle.pem",
-
-    # OpenELEC
-    "/etc/pki/tls/cacert.pem",
-
-    # CentOS/RHEL 7
-    "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
-
-    # Open SSL on MacOS
-    "/usr/local/etc/openssl/cert.pem",
-
-    # MacOS & Alpine Linux
-    "/etc/ssl/cert.pem"
-  ]
-
-  defp cacerts_from_os do
-    Enum.find(@certificate_locations, &File.exists?/1)
   end
 
   defp warn_no_cacerts do
     Mix.shell().error("""
     No certificate trust store was found.
-
-    Tried looking for: #{inspect(@certificate_locations)}
 
     A certificate trust store is required in
     order to download locales for your configuration.
@@ -124,18 +87,12 @@ defmodule ElixirMake.Downloader.Httpc do
     installed certificate trust store one of the
     following actions may be taken:
 
-    1. Install the hex package `castore`. It will
-       be automatically detected after recompilation.
-
-    2. Install the hex package `certifi`. It will
-       be automatically detected after recompilation.
-
-    3. Specify the location of a certificate trust store
+    1. Specify the location of a certificate trust store
        by configuring it in environment variable:
 
-         export ELIXIR_MAKE_CACERT="/path/to/cacerts.pem"
+         export HEX_CACERTS_PATH="/path/to/cacerts.pem"
 
-    4. Use OTP 25+ on an OS that has built-in certificate
+    2. Use OTP 25+ on an OS that has built-in certificate
        trust store.
     """)
   end

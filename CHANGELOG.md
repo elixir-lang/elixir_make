@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.9.0-dev
+
+  * Rely on certificate stores provided by Erlang/OTP 25+
+
 ## v0.8.4 (2024-06-04)
 
   * Support configuring `make_precompiler_downloader`
