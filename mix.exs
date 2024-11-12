@@ -1,7 +1,7 @@
 defmodule ElixirMake.Mixfile do
   use Mix.Project
 
-  @version "0.9.0-dev"
+  @version "0.9.0"
   def project do
     [
       app: :elixir_make,

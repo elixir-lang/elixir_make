@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.9.0-dev
+## v0.9.0 (2024-11-12)
 
   * Rely on certificate stores provided by Erlang/OTP 25+
   * Support setting `:force_build` opts in config:
