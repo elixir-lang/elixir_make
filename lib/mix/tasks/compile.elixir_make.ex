@@ -77,6 +77,10 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
     * `:make_force_build` - if build should be forced even if precompiled artefacts
       are available. Defaults to true if the app has a `-dev` version flag.
+      Users of a library can also force build by setting the following application
+      configuration:
+
+          config :elixir_make, :force_build, some_library: true
 
   See [the Precompilation guide](PRECOMPILATION_GUIDE.md) for more information.
 
