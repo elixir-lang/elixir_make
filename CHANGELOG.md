@@ -3,6 +3,11 @@
 ## v0.9.0-dev
 
   * Rely on certificate stores provided by Erlang/OTP 25+
+  * Support setting `:force_build` opts in config:
+
+    ```elixir
+    config :elixir_make, :force_build, app1: true, app2: false
+    ```
 
 ## v0.8.4 (2024-06-04)
 

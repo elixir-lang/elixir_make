@@ -136,7 +136,11 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     config = Mix.Project.config()
     app = config[:app]
     version = config[:version]
-    force_build = pre_release?(version) or Keyword.get(config, :make_force_build, false)
+
+    force_build =
+      pre_release?(version) or Keyword.get(config, :make_force_build, false) or
+        Keyword.get(Application.get_env(:elixir_make, :force_build, []), app, false)
+
     {precompiler_type, precompiler} = config[:make_precompiler] || {nil, nil}
 
     cond do
