@@ -139,7 +139,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
 
     force_build =
       pre_release?(version) or Keyword.get(config, :make_force_build, false) or
-        Keyword.get(Application.get_env(:elixir_make, :force_build, []), app)
+        Keyword.get(Application.get_env(:elixir_make, :force_build, []), app, false)
 
     {precompiler_type, precompiler} = config[:make_precompiler] || {nil, nil}
 
