@@ -104,7 +104,11 @@ defmodule ElixirMake.Compiler do
     opts = [
       # There is no guarantee the command will return valid UTF-8,
       # especially on Windows, so don't try to interpret the stream
-      into: IO.binstream(:stdio, :line),
+      into:
+        if(match?({:win32, _}, :os.type()),
+          do: IO.binstream(:stdio, :line),
+          else: IO.stream(:stdio, :line)
+        ),
       stderr_to_stdout: true,
       cd: cwd,
       env: env
