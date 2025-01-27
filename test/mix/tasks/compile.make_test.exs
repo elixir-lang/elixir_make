@@ -292,7 +292,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
     end)
   end
 
-  test "build_embedded doesn't clobber build artifacts" do
+  test "doesn't clobber existing build artifacts" do
     in_fixture(fn ->
       build_file_path = "./_build/test/lib/my_app/priv/build_file"
 
