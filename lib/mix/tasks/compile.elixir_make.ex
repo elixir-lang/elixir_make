@@ -103,6 +103,14 @@ defmodule Mix.Tasks.Compile.ElixirMake do
     * `ERL_INTERFACE_INCLUDE_DIR`
 
   These may also be overwritten with the `make_env` option.
+
+  ## Compilation artifacts and working with priv directories
+
+  Generally speaking, compilation artifacts are written to the `priv`
+  directory, as that the only directory, besides `ebin`, which are
+  available to Erlang/OTP applications. Therefore, we recommend the
+  Makefile top copy any artifact to `$MIX_APP_PATH/priv` or, even
+  better, to `$MIX_APP_PATH/priv/$MIX_TARGET`.
   """
 
   use Mix.Task
