@@ -1,6 +1,6 @@
 # Precompilation guide
 
-This guide has two sections, the first one is intended for precompiler module developers. It covers a minimal example of creating a precompiler module. The second section is intended for library developers who want their library to be able to use precompiled artefacts in a simple way.
+This guide has two sections, the first one is intended for library developers who want their library to be able to use precompiled artefacts in a simple way. The second section one is intended for precompiler module developers and it covers a minimal example of creating a precompiler module.
 
 - [Library Developer](#library-developer)
 - [Precompiler Module Developer](#precompiler-module-developer)

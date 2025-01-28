@@ -109,8 +109,21 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   Generally speaking, compilation artifacts are written to the `priv`
   directory, as that the only directory, besides `ebin`, which are
   available to Erlang/OTP applications. Therefore, we recommend the
-  Makefile top copy any artifact to `$MIX_APP_PATH/priv` or, even
-  better, to `$MIX_APP_PATH/priv/$MIX_TARGET`.
+  Makefile to copy any artifact to `$MIX_APP_PATH/priv` and to have
+  no top-level `priv` directory.
+
+  In case you create a top-level `priv` directory, it gets symlinked
+  to all build directories, in which case you should rather copy the
+  artifacts to `$MIX_APP_PATH/priv/$MIX_TARGET`. This is relevant for
+  projects like Nerves that build for several targets and may involve
+  cross-compilation, so the user ends up with one _build subdirectory
+  per target and we don't want artifacts in the symlinked `priv` to
+  override each other. The downside of shared `priv` is that creating
+  a release would copy all its contents, even with the artifacts not
+  related to the given target. So, if your compilation is expensive
+  it may be better to never create top-level `priv` and manage your
+  own `cache` directory with per-target artifacts and copy them to
+  `$MIX_APP_PATH/priv`.
   """
 
   use Mix.Task
