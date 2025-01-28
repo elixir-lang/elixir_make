@@ -109,7 +109,7 @@ defmodule Mix.Tasks.Compile.ElixirMake do
   Generally speaking, compilation artifacts are written to the `priv`
   directory, as that the only directory, besides `ebin`, which are
   available to Erlang/OTP applications. Therefore, we recommend the
-  Makefile top copy any artifact to `$MIX_APP_PATH/priv` and to have
+  Makefile to copy any artifact to `$MIX_APP_PATH/priv` and to have
   no top-level `priv` directory.
 
   In case you create a top-level `priv` directory, it gets symlinked
