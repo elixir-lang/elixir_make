@@ -147,7 +147,7 @@ defmodule ElixirMake.Compiler do
           true -> "nmake"
         end
 
-      {:unix, type} when type in [:freebsd, :openbsd, :netbsd, :dragonfly] ->
+      {:unix, type} when type in [:freebsd, :openbsd, :netbsd, :dragonfly, :sunos] ->
         "gmake"
 
       _ ->
