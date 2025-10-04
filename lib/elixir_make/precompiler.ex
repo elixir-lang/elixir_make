@@ -3,8 +3,6 @@ defmodule ElixirMake.Precompiler do
   The behaviour for precompiler modules.
   """
 
-  require Logger
-
   @typedoc """
   Target triplet.
   """

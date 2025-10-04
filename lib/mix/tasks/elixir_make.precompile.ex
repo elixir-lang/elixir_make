@@ -13,7 +13,6 @@ defmodule Mix.Tasks.ElixirMake.Precompile do
   """
 
   alias ElixirMake.Artefact
-  require Logger
   use Mix.Task
 
   @recursive true

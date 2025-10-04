@@ -11,7 +11,8 @@ defmodule ElixirMake.Mixfile do
       package: package(),
       docs: docs(),
       deps: deps(),
-      xref: [exclude: [Mix, :crypto, :ssl, :public_key, :httpc]]
+      xref: [exclude: [Mix, :crypto, :ssl, :public_key, :httpc]],
+      test_ignore_filters: [~r|^test\/fixtures\/|]
     ]
   end
 
