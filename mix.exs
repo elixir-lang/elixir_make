@@ -6,7 +6,7 @@ defmodule ElixirMake.Mixfile do
     [
       app: :elixir_make,
       version: @version,
-      elixir: "~> 1.9",
+      elixir: "~> 1.14",
       description: "A Make compiler for Mix",
       package: package(),
       docs: docs(),

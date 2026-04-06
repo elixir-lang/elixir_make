@@ -67,13 +67,11 @@ defmodule ElixirMake.Downloader.Httpc do
   end
 
   defp otp_cacerts do
-    if System.otp_release() >= "25" do
-      # cacerts_get/0 raises if no certs found
-      try do
-        :public_key.cacerts_get()
-      rescue
-        _ -> nil
-      end
+    # cacerts_get/0 raises if no certs found
+    try do
+      :public_key.cacerts_get()
+    rescue
+      _ -> nil
     end
   end
 

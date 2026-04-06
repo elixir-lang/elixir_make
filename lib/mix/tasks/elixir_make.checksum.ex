@@ -88,7 +88,9 @@ defmodule Mix.Tasks.ElixirMake.Checksum do
 
     if Keyword.get(options, :print, false) do
       artefacts
-      |> Enum.map(fn %Artefact{basename: basename, checksum: checksum} -> {basename, checksum} end)
+      |> Enum.map(fn %Artefact{basename: basename, checksum: checksum} ->
+        {basename, checksum}
+      end)
       |> Enum.sort()
       |> Enum.map_join("\n", fn {file, checksum} -> "#{checksum}  #{file}" end)
       |> IO.puts()
