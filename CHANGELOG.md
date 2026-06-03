@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.10.0 (2026-06-03)
+
+  * Require Elixir v1.14+
+  * Treat empty proxy vars as unset
+  * Add :sunos to list of unix types that uses gmake
+  * Fix character encoding on Unix system during logging
+
 ## v0.9.0 (2024-11-12)
 
   * Rely on certificate stores provided by Erlang/OTP 25+
