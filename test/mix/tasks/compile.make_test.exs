@@ -307,7 +307,7 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
         refute File.exists?(build_file_path)
 
         capture_io(fn ->
-          Mix.Tasks.Compile.run([])
+          Mix.Tasks.Compile.run(["--no-prune-code-paths"])
         end)
 
         assert File.exists?(build_file_path)
