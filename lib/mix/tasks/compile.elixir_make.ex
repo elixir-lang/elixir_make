@@ -231,16 +231,20 @@ defmodule Mix.Tasks.Compile.ElixirMake do
       {:ok, target, nif_version_to_use, url} ->
         archived_fullpath = Artefact.archive_path(config, target, nif_version_to_use)
 
-        unless File.exists?(archived_fullpath) do
-          Mix.shell().info("Downloading precompiled NIF to #{archived_fullpath}")
+        download =
+          unless File.exists?(archived_fullpath) do
+            Mix.shell().info("Downloading precompiled NIF to #{archived_fullpath}")
 
-          with {:ok, archived_data} <- Artefact.download(config, url) do
-            File.mkdir_p(Path.dirname(archived_fullpath))
-            File.write(archived_fullpath, archived_data)
+            with {:ok, archived_data} <- Artefact.download(config, url) do
+              File.mkdir_p(Path.dirname(archived_fullpath))
+              File.write(archived_fullpath, archived_data)
+            end
           end
-        end
 
-        Artefact.verify_and_decompress(archived_fullpath, app_priv)
+        case download do
+          {:error, _} = error -> error
+          _ -> Artefact.verify_and_decompress(archived_fullpath, app_priv)
+        end
 
       {:error, msg} ->
         {:error, msg}
