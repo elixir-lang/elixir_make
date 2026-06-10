@@ -421,6 +421,29 @@ defmodule Mix.Tasks.Compile.ElixirMakeTest do
     end)
   end
 
+  test "surfaces the download error instead of a misleading file-not-found" do
+    in_fixture(fn ->
+      File.mkdir!("priv")
+
+      File.write("Makefile", """
+      all:
+      \t@touch priv/my_app
+      """)
+
+      with_project_config(
+        [
+          make_precompiler: {:nif, MyApp.Precompiler},
+          make_precompiler_url: "https://example.com/@{artefact_filename}",
+          make_precompiler_downloader: MyApp.FailingDownloader
+        ],
+        fn ->
+          System.put_env("ELIXIR_MAKE_CACHE_DIR", "./cache")
+          assert capture_io(:stderr, fn -> run([]) end) =~ "download boom"
+        end
+      )
+    end)
+  end
+
   defp in_fixture(fun) do
     File.cd!(@fixture_project, fun)
   end
@@ -439,4 +462,11 @@ defmodule MyApp.Downloader do
     path = String.replace(url, "https://example.com/", __DIR__ <> "/dl/")
     File.read(path)
   end
+end
+
+defmodule MyApp.FailingDownloader do
+  @behaviour ElixirMake.Downloader
+
+  @impl true
+  def download(_url), do: {:error, "download boom"}
 end
