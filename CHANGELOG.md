@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.10.1 (2026-10-24)
+
+  * Increase max header length
+  * Surface the real download error instead of a misleading file-not-found
+
 ## v0.10.0 (2026-06-03)
 
   * Require Elixir v1.14+
