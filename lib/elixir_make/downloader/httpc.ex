@@ -13,14 +13,14 @@ defmodule ElixirMake.Downloader.Httpc do
     {:ok, _} = Application.ensure_all_started(:public_key)
 
     if proxy = proxy_env(:http) do
-      Mix.shell().info("Using HTTP_PROXY: #{proxy}")
+      Mix.shell().info("Using HTTP_PROXY: #{without_userinfo(proxy)}")
       %{host: host, port: port} = URI.parse(proxy)
 
       :httpc.set_options([{:proxy, {{String.to_charlist(host), port}, []}}])
     end
 
     if proxy = proxy_env(:https) do
-      Mix.shell().info("Using HTTPS_PROXY: #{proxy}")
+      Mix.shell().info("Using HTTPS_PROXY: #{without_userinfo(proxy)}")
       %{host: host, port: port} = URI.parse(proxy)
       :httpc.set_options([{:https_proxy, {{String.to_charlist(host), port}, []}}])
     end
@@ -64,6 +64,14 @@ defmodule ElixirMake.Downloader.Httpc do
 
       _ ->
         []
+    end
+  end
+
+  # Keeps proxy credentials out of build logs.
+  defp without_userinfo(proxy) do
+    case URI.parse(proxy) do
+      %URI{userinfo: nil} -> proxy
+      uri -> URI.to_string(%{uri | userinfo: nil})
     end
   end
 
