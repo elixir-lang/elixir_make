@@ -39,12 +39,31 @@ defmodule ElixirMake.Downloader.Httpc do
 
     options = [body_format: :binary, max_header_size: 65_536]
 
-    case :httpc.request(:get, {url_charlist, []}, https_options, options) do
+    case :httpc.request(:get, {url_charlist, []}, https_options ++ proxy_auth(url), options) do
       {:ok, {{_, 200, _}, _headers, body}} ->
         {:ok, body}
 
       other ->
         {:error, "couldn't fetch NIF from #{url}: #{inspect(other)}"}
+    end
+  end
+
+  # httpc doesn't read credentials from the proxy URL, so pass them as
+  # proxy_auth, as Mix.Utils.proxy_config/1 does.
+  defp proxy_auth(url) do
+    proxy =
+      case URI.parse(url) do
+        %URI{scheme: "https"} -> proxy_env(:https)
+        _ -> proxy_env(:http)
+      end
+
+    case proxy && URI.parse(proxy) do
+      %URI{userinfo: userinfo} when is_binary(userinfo) ->
+        destructure [user, pass], String.split(userinfo, ":", parts: 2)
+        [proxy_auth: {String.to_charlist(user), String.to_charlist(pass || "")}]
+
+      _ ->
+        []
     end
   end
 
